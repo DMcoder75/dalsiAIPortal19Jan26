@@ -163,8 +163,11 @@ export const streamGenerateText = async (
   onComplete,
   onError,
   modelId = 'dalsi-ai',
-  maxLength = 500
+  maxLength = 500,
+  abortSignal = null
 ) => {
+  let reader = null
+  
   try {
     const baseUrl = getModelUrl(modelId)
     
@@ -179,13 +182,14 @@ export const streamGenerateText = async (
       payload.image_data_url = imageDataUrl
     }
 
-    // Make streaming request
+    // Make streaming request with abort signal
     const response = await fetch(`${baseUrl}/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: abortSignal
     })
 
     if (!response.ok) {
@@ -194,20 +198,34 @@ export const streamGenerateText = async (
     }
 
     // Process Server-Sent Events stream
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder('utf-8')
+    reader = response.body.getReader()
+    const decoder = new TextDecoder('utf-8', { fatal: false, ignoreBOM: true })
     let fullResponse = ''
     let buffer = ''
+    let hasCalledComplete = false
 
     while (true) {
+      // Check if aborted
+      if (abortSignal?.aborted) {
+        console.log('🛑 Stream aborted by user')
+        reader.cancel()
+        return
+      }
+
       const { done, value } = await reader.read()
       
       if (done) {
+        // Final decode to handle any remaining bytes
+        const finalChunk = decoder.decode(new Uint8Array(), { stream: false })
+        if (finalChunk) {
+          buffer += finalChunk
+        }
         break
       }
 
-      // Decode the chunk
-      buffer += decoder.decode(value, { stream: true })
+      // Decode the chunk with stream: true to handle multi-byte UTF-8 characters
+      const chunk = decoder.decode(value, { stream: true })
+      buffer += chunk
       
       // Split by double newlines to process complete SSE messages
       const messages = buffer.split('\n\n')
@@ -220,20 +238,48 @@ export const streamGenerateText = async (
         
         // SSE format: "data: {json}"
         if (message.startsWith('data: ')) {
-          const jsonData = message.slice(6) // Remove "data: " prefix
+          const jsonData = message.slice(6).trim() // Remove "data: " prefix
           
+          // Production-grade JSON parsing with fallback
           try {
             const data = JSON.parse(jsonData)
             
-            // Handle token
+            // Handle "response" format (full response in one message)
+            if (data.response) {
+              console.log('📦 Received full response format')
+              fullResponse = data.response
+              // Clean UTF-8 replacement characters before displaying
+              const cleanResponse = fullResponse.replace(/\uFFFD/g, '').trim()
+              onToken(cleanResponse)
+              if (!hasCalledComplete) {
+                hasCalledComplete = true
+                if (cleanResponse !== fullResponse) {
+                  console.log('🧹 Removed UTF-8 replacement character from response')
+                }
+                onComplete(cleanResponse)
+              }
+              return
+            }
+            
+            // Handle "token" format (streaming tokens)
             if (data.token) {
-              fullResponse += data.token
-              onToken(data.token)
+              // Clean token before adding to response
+              const cleanToken = data.token.replace(/\uFFFD/g, '')
+              fullResponse += cleanToken
+              onToken(cleanToken)
             }
             
             // Handle completion
             if (data.done) {
-              onComplete(fullResponse)
+              if (!hasCalledComplete) {
+                hasCalledComplete = true
+                // Final cleanup
+                const cleanResponse = fullResponse.replace(/\uFFFD/g, '').trim()
+                if (cleanResponse !== fullResponse) {
+                  console.log('🧹 Removed UTF-8 replacement character from final response')
+                }
+                onComplete(cleanResponse)
+              }
               return
             }
             
@@ -242,21 +288,99 @@ export const streamGenerateText = async (
               throw new Error(data.error)
             }
           } catch (parseError) {
-            console.error('Error parsing SSE data:', parseError, jsonData)
+            console.warn('⚠️ JSON parse error, attempting to extract meaningful data:', parseError)
+            
+            // Production-grade fallback: Try to extract meaningful content from malformed JSON
+            try {
+              // Try to extract response field (full response format)
+              const responseMatch = jsonData.match(/"response"\s*:\s*"([^"]*)"/)
+              if (responseMatch && responseMatch[1]) {
+                const response = responseMatch[1].replace(/\uFFFD/g, '').trim()
+                fullResponse = response
+                onToken(response)
+                if (!hasCalledComplete) {
+                  hasCalledComplete = true
+                  onComplete(fullResponse)
+                }
+                console.log('✅ Extracted response from malformed JSON')
+                return
+              }
+              
+              // Try to extract token field using regex
+              const tokenMatch = jsonData.match(/"token"\s*:\s*"([^"]*)"/)
+              if (tokenMatch && tokenMatch[1]) {
+                const token = tokenMatch[1].replace(/\uFFFD/g, '')
+                fullResponse += token
+                onToken(token)
+                console.log('✅ Extracted token from malformed JSON:', token)
+                continue
+              }
+              
+              // Try to extract done field
+              const doneMatch = jsonData.match(/"done"\s*:\s*(true|false)/)
+              if (doneMatch && doneMatch[1] === 'true') {
+                if (!hasCalledComplete) {
+                  hasCalledComplete = true
+                  const cleanResponse = fullResponse.replace(/\uFFFD/g, '').trim()
+                  onComplete(cleanResponse)
+                }
+                return
+              }
+              
+              // Try to extract error field
+              const errorMatch = jsonData.match(/"error"\s*:\s*"([^"]*)"/)
+              if (errorMatch && errorMatch[1]) {
+                throw new Error(errorMatch[1])
+              }
+              
+              // If it's just text without JSON structure, treat it as a token
+              if (jsonData && !jsonData.includes('{') && !jsonData.includes('}')) {
+                fullResponse += jsonData
+                onToken(jsonData)
+                console.log('✅ Treated plain text as token:', jsonData)
+                continue
+              }
+              
+              console.error('❌ Could not extract meaningful data from:', jsonData)
+            } catch (extractError) {
+              console.error('❌ Extraction failed:', extractError)
+            }
           }
+        } else if (message.trim()) {
+          // Handle non-SSE formatted messages (plain text)
+          console.log('📝 Received plain text message:', message)
+          fullResponse += message
+          onToken(message)
         }
       }
     }
 
     // If we exit the loop without getting a "done" signal, complete anyway
-    if (fullResponse) {
-      onComplete(fullResponse)
-    } else {
+    if (fullResponse && !hasCalledComplete) {
+      hasCalledComplete = true
+      // Clean up any UTF-8 replacement characters (�) that might have been added
+      const cleanResponse = fullResponse.replace(/\uFFFD/g, '').trim()
+      console.log('🧹 Cleaned response, removed', fullResponse.length - cleanResponse.length, 'replacement characters')
+      onComplete(cleanResponse)
+    } else if (!fullResponse) {
       throw new Error('Stream ended without response')
     }
 
   } catch (error) {
-    console.error('Stream generation error:', error)
+    // Check if it's an abort error
+    if (error.name === 'AbortError' || abortSignal?.aborted) {
+      console.log('🛑 Request aborted by user')
+      if (reader) {
+        try {
+          await reader.cancel()
+        } catch (e) {
+          // Ignore cancel errors
+        }
+      }
+      return
+    }
+    
+    console.error('❌ Stream generation error:', error)
     onError(error)
   }
 }

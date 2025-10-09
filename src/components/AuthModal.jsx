@@ -84,16 +84,16 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
       // Update auth context (this will trigger migration)
       await login(userData)
       
-      // Close modal and let the migration happen
+      // Close modal
       if (onSuccess) {
         onSuccess()
       }
       onClose()
       
-      // Reload after a short delay to allow migration to complete
+      // Reload after short delay to allow migration to complete
       setTimeout(() => {
         window.location.reload()
-      }, 1000)
+      }, 1500)
     } catch (error) {
       console.error('Login error:', error)
       setError(error.message || String(error))

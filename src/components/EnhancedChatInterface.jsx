@@ -28,7 +28,9 @@ import {
   AlertCircle,
   Settings,
   Archive,
-  ChevronDown
+  ChevronDown,
+  StopCircle,
+  Loader2
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import * as dalsiAPI from '../lib/dalsiAPI'
@@ -41,6 +43,7 @@ import {
   canUserSendMessage 
 } from '../lib/usageTracking'
 import logo from '../assets/DalSiAILogo2.png'
+import neoDalsiLogo from '../assets/neoDalsiLogo.png'
 
 // Code syntax highlighting component
 const CodeBlock = ({ code, language = 'javascript' }) => {
@@ -427,7 +430,7 @@ const UsageLimitWarning = ({ usageStatus, onUpgrade, onLogin }) => {
 }
 
 export default function EnhancedChatInterface() {
-  const { user, loading: authLoading, logout } = useAuth()
+  const { user, loading: authLoading, logout, guestSessionId, clearGuestSession } = useAuth()
   const [messages, setMessages] = useState([])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -436,6 +439,7 @@ export default function EnhancedChatInterface() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [userSubscription, setUserSubscription] = useState(null)
   const [userUsageCount, setUserUsageCount] = useState(0)
+  const [guestMessageCount, setGuestMessageCount] = useState(0)
   const [selectedModel, setSelectedModel] = useState('dalsi-ai')
   const [availableModels, setAvailableModels] = useState([])
   const [apiHealthy, setApiHealthy] = useState({})
@@ -444,8 +448,10 @@ export default function EnhancedChatInterface() {
   const [selectedImage, setSelectedImage] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [showArchives, setShowArchives] = useState(false)
+  const [isWaitingForResponse, setIsWaitingForResponse] = useState(false)
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
+  const abortControllerRef = useRef(null)
 
   // Professional welcome message with proper formatting
   const welcomeMessage = {
@@ -494,6 +500,20 @@ How can I assist you today?`,
       // Migrate guest messages to database when user logs in
       if (user) {
         await migrateGuestMessages()
+      } else {
+        // Load guest messages from localStorage if not logged in
+        const savedGuestMessages = localStorage.getItem('guest_messages')
+        if (savedGuestMessages) {
+          try {
+            const guestMessages = JSON.parse(savedGuestMessages)
+            if (guestMessages.length > 0) {
+              console.log('📥 Loading', guestMessages.length, 'guest messages from localStorage')
+              setMessages(guestMessages)
+            }
+          } catch (error) {
+            console.error('Error loading guest messages:', error)
+          }
+        }
       }
     }
     
@@ -506,14 +526,39 @@ How can I assist you today?`,
 
   const migrateGuestMessages = async () => {
     try {
-      // Check if migration is pending
-      const pendingMigration = localStorage.getItem('pending_guest_migration')
-      if (!pendingMigration) return
+      // Get session ID from context or localStorage
+      let sessionId = guestSessionId || localStorage.getItem('guest_session_id')
       
-      const guestMessages = JSON.parse(localStorage.getItem('guest_messages') || '[]')
+      if (!sessionId) {
+        console.log('ℹ️ No guest session ID found, skipping migration')
+        return
+      }
+
+      console.log('🔍 Checking for guest conversations with session:', sessionId)
+
+      // Check database for guest conversation
+      const { data: guestConversation, error: fetchError } = await supabase
+        .from('guest_conversations')
+        .select('*')
+        .eq('session_id', sessionId)
+        .maybeSingle() // Use maybeSingle to avoid 406 errors
+
+      if (fetchError) {
+        console.error('Error fetching guest conversation:', fetchError)
+        return
+      }
+
+      if (!guestConversation) {
+        console.log('ℹ️ No guest conversation found in database')
+        return
+      }
+
+      const guestMessages = guestConversation.messages || []
       
       if (guestMessages.length === 0) {
-        localStorage.removeItem('pending_guest_migration')
+        console.log('ℹ️ No messages to migrate')
+        // Clean up empty entry
+        await supabase.from('guest_conversations').delete().eq('session_id', sessionId)
         return
       }
 
@@ -530,8 +575,7 @@ How can I assist you today?`,
         .insert([{
           user_id: user.id,
           title: chatTitle,
-          selected_model_id: selectedModel,
-          archived: false
+          model_type: selectedModel
         }])
         .select()
         .single()
@@ -551,11 +595,11 @@ How can I assist you today?`,
             chat_id: newChat.id,
             sender: msg.sender,
             content: msg.content,
-            model_id: selectedModel,
             content_type: 'text',
             metadata: {
               migrated_from_guest: true,
-              original_timestamp: msg.timestamp
+              original_timestamp: msg.timestamp,
+              model: selectedModel // Store model name in metadata, not model_id
             },
             context_data: { timestamp: msg.timestamp }
           }])
@@ -571,18 +615,38 @@ How can I assist you today?`,
       setCurrentChatId(newChat.id)
       setMessages(guestMessages)
       
-      // Clear guest messages and migration flag from localStorage
+      // Delete guest conversation from database
+      const { error: deleteError } = await supabase
+        .from('guest_conversations')
+        .delete()
+        .eq('session_id', sessionId)
+      
+      if (deleteError) {
+        console.error('⚠️ Error deleting guest conversation:', deleteError)
+      } else {
+        console.log('🗑️ Guest conversation deleted from database')
+      }
+      
+      // Clear guest messages and session from localStorage
       localStorage.removeItem('guest_messages')
-      localStorage.removeItem('pending_guest_migration')
+      localStorage.removeItem('guest_session_id')
+      localStorage.removeItem('dalsi_guest_messages')
+      console.log('🧹 Cleared localStorage')
+      
+      // Clear session from context
+      if (clearGuestSession) {
+        clearGuestSession()
+        console.log('🧹 Cleared guest session from context')
+      }
       
       // Reload chats to show the new chat in sidebar
+      console.log('🔄 Reloading chats to show new chat in sidebar...')
       await loadChats()
+      console.log('✅ Chats reloaded')
 
-      console.log('✅ Guest messages migrated successfully!')
+      console.log('✅ Guest messages migrated successfully! New chat ID:', newChat.id)
     } catch (error) {
       console.error('❌ Error migrating guest messages:', error)
-      // Clear the flag even on error to prevent infinite retry
-      localStorage.removeItem('pending_guest_migration')
     }
   }
 
@@ -605,9 +669,12 @@ How can I assist you today?`,
         .select('*')
         .eq('user_id', userId)
         .eq('status', 'active')
-        .single()
+        .maybeSingle() // Use maybeSingle instead of single to avoid 406 errors
 
-      if (error && error.code !== 'PGRST116') throw error
+      if (error) {
+        console.error('Error loading subscription:', error)
+        return
+      }
       setUserSubscription(data)
     } catch (error) {
       console.error('Error loading subscription:', error)
@@ -824,13 +891,20 @@ How can I assist you today?`,
           chat_id: chatId,
           sender,
           content,
-          model_id: selectedModel,
           content_type: metadata.content_type || 'text',
-          metadata,
+          metadata: {
+            ...metadata,
+            model: selectedModel // Store model name in metadata instead of model_id
+          },
           context_data: { timestamp: new Date().toISOString() }
         }])
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Error saving message to database:', error)
+        throw error
+      }
+
+      console.log('✅ Message saved:', sender, content.substring(0, 50))
 
       await supabase
         .from('chats')
@@ -838,7 +912,53 @@ How can I assist you today?`,
         .eq('id', chatId)
 
     } catch (error) {
-      console.error('Error saving message:', error)
+      console.error('❌ Error in saveMessage:', error)
+    }
+  }
+
+  const saveGuestMessageToDB = async (message) => {
+    try {
+      // Get or create session ID with better randomization
+      let sessionId = guestSessionId
+      if (!sessionId) {
+        sessionId = localStorage.getItem('guest_session_id')
+        if (!sessionId) {
+          // Generate highly random session ID to avoid collisions
+          const timestamp = Date.now()
+          const random1 = Math.random().toString(36).substring(2, 15)
+          const random2 = Math.random().toString(36).substring(2, 15)
+          sessionId = `guest_${timestamp}_${random1}${random2}`
+          localStorage.setItem('guest_session_id', sessionId)
+        }
+        console.log('⚠️ Using fallback session ID:', sessionId)
+      }
+
+      const guestMessages = JSON.parse(localStorage.getItem('guest_messages') || '[]')
+      
+      console.log('💾 Upserting to DB:', {
+        session_id: sessionId,
+        message_count: guestMessages.length
+      })
+      
+      // Use upsert to prevent duplicates - will insert or update based on session_id
+      const { data, error } = await supabase
+        .from('guest_conversations')
+        .upsert({
+          session_id: sessionId,
+          messages: guestMessages
+        }, {
+          onConflict: 'session_id',
+          ignoreDuplicates: false
+        })
+        .select()
+
+      if (error) {
+        console.error('❌ Error upserting guest message to DB:', error)
+      } else {
+        console.log('✅ Guest conversation upserted successfully')
+      }
+    } catch (error) {
+      console.error('❌ Error in saveGuestMessageToDB:', error)
     }
   }
 
@@ -958,7 +1078,7 @@ How can I assist you today?`,
     setInputMessage('')
     removeImage()
     setIsLoading(true)
-    setIsStreaming(true)
+    setIsStreaming(false)
 
     // Save user message if authenticated
     if (user && currentChatId) {
@@ -967,10 +1087,13 @@ How can I assist you today?`,
         image_name: currentImage?.name
       })
     } else if (!user) {
-      // Save guest message to localStorage
+      // Save guest message to localStorage AND database
       const guestMessages = JSON.parse(localStorage.getItem('guest_messages') || '[]')
       guestMessages.push(userMessage)
       localStorage.setItem('guest_messages', JSON.stringify(guestMessages))
+      
+      // Also save to database temp table
+      await saveGuestMessageToDB(userMessage)
     }
 
     try {
@@ -986,20 +1109,51 @@ How can I assist you today?`,
       // Preprocess message
       const enhancedMessage = dalsiAPI.preprocessMessage(currentInput, messageHistory, selectedModel)
       
+      // Create abort controller for this request
+      abortControllerRef.current = new AbortController()
+      setIsWaitingForResponse(true)
+      
       // Generate AI response using streaming
       await new Promise((resolve, reject) => {
         let fullResponse = ''
+        let hasCompleted = false // Prevent multiple completions
         
         dalsiAPI.streamGenerateText(
           enhancedMessage,
           imageDataUrl,
           // onToken callback
           (token) => {
+            // Check if aborted
+            if (abortControllerRef.current?.signal.aborted) {
+              return
+            }
+            
+            if (fullResponse === '') {
+              // First token received, start streaming
+              setIsStreaming(true)
+              setIsWaitingForResponse(false)
+            }
             fullResponse += token
             setStreamingMessage(fullResponse)
           },
           // onComplete callback
-          (finalResponse) => {
+          async (finalResponse) => {
+            // Prevent multiple completions
+            if (hasCompleted) {
+              console.log('⚠️ Duplicate completion detected, ignoring')
+              return
+            }
+            hasCompleted = true
+            
+            // Check if aborted
+            if (abortControllerRef.current?.signal.aborted) {
+              console.log('🛑 Response aborted by user')
+              resolve()
+              return
+            }
+
+            console.log('✅ AI response received:', finalResponse.substring(0, 100))
+
             const aiResponse = {
               id: Date.now() + 1,
               sender: 'ai',
@@ -1012,27 +1166,34 @@ How can I assist you today?`,
             setStreamingMessage('')
             setIsStreaming(false)
             setIsLoading(false)
+            setIsWaitingForResponse(false)
 
             // Save AI response if authenticated
             if (user && currentChatId) {
-              saveMessage(currentChatId, 'ai', aiResponse.content, {
+              console.log('💾 Saving AI response to database...')
+              await saveMessage(currentChatId, 'ai', aiResponse.content, {
                 model_used: selectedModel,
                 content_type: 'text',
                 has_code: aiResponse.content.includes('```'),
                 processing_time: Date.now() - userMessage.id
               })
+              console.log('✅ AI response saved to database')
             } else if (!user) {
-              // Save guest AI response to localStorage
+              // Save guest AI response to localStorage AND database
               const guestMessages = JSON.parse(localStorage.getItem('guest_messages') || '[]')
               guestMessages.push(aiResponse)
               localStorage.setItem('guest_messages', JSON.stringify(guestMessages))
+              
+              // Also save to database temp table
+              await saveGuestMessageToDB(aiResponse)
             }
 
             // Update usage count
             if (selectedModel === 'dalsi-ai') {
               if (!user) {
-                // Increment guest count in localStorage
+                // Increment guest count in localStorage and state
                 incrementGuestMessageCount()
+                setGuestMessageCount(prev => prev + 1)
               } else if (!userSubscription || userSubscription.status !== 'active') {
                 // Increment logged-in user count
                 setUserUsageCount(prev => prev + 1)
@@ -1043,7 +1204,13 @@ How can I assist you today?`,
           },
           // onError callback
           (error) => {
-            console.error('Error generating AI response:', error)
+            // Prevent multiple error handlers
+            if (hasCompleted) {
+              return
+            }
+            hasCompleted = true
+            
+            console.error('❌ Error generating AI response:', error)
             
             const errorResponse = {
               id: Date.now() + 1,
@@ -1056,10 +1223,12 @@ How can I assist you today?`,
             setStreamingMessage('')
             setIsStreaming(false)
             setIsLoading(false)
+            setIsWaitingForResponse(false)
             reject(error)
           },
           selectedModel,  // modelId
-          3000  // maxLength - sufficient for context + complete responses
+          3000,  // maxLength - sufficient for context + complete responses
+          abortControllerRef.current.signal  // Pass abort signal
         )
       })
 
@@ -1298,8 +1467,8 @@ How can I assist you today?`,
                 <div className={`max-w-3xl ${msg.sender === 'user' ? 'order-2' : 'order-1'}`}>
                   <div className="flex items-start space-x-3">
                     {msg.sender === 'ai' && (
-                      <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/25 border border-purple-500/30">
-                        <Bot className="h-5 w-5 text-white" />
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <img src={neoDalsiLogo} alt="DalSi AI" className="w-10 h-10 object-contain" />
                       </div>
                     )}
                     <Card className={`group relative overflow-hidden backdrop-blur-sm ${
@@ -1344,8 +1513,8 @@ How can I assist you today?`,
               <div className="flex justify-start">
                 <div className="max-w-3xl order-1">
                   <div className="flex items-start space-x-3">
-                    <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/25 border border-purple-500/30">
-                      <Bot className="h-5 w-5 text-white animate-pulse" />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <img src={neoDalsiLogo} alt="DalSi AI" className="w-10 h-10 object-contain animate-pulse" />
                     </div>
                     <Card className="group relative overflow-hidden backdrop-blur-sm bg-black/40 text-white border border-purple-500/20 shadow-lg shadow-purple-500/10">
                       <div className="absolute inset-0 bg-purple-900/10 backdrop-blur-sm"></div>
@@ -1366,17 +1535,31 @@ How can I assist you today?`,
               </div>
             )}
 
-            {/* Loading Indicator */}
-            {isLoading && !isStreaming && (
+            {/* Loading Indicator with Letter Animation */}
+            {(isLoading || isWaitingForResponse) && !isStreaming && (
               <div className="flex justify-start">
                 <div className="max-w-3xl order-1">
                   <div className="flex items-start space-x-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center flex-shrink-0">
-                      <Bot className="h-4 w-4 text-white animate-pulse" />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <img src={neoDalsiLogo} alt="DalSi AI" className="w-10 h-10 object-contain animate-pulse" />
                     </div>
-                    <div className="bg-card p-4 rounded-lg">
-                      <div className="animate-pulse bg-muted h-4 w-32 rounded"></div>
-                    </div>
+                    <Card className="bg-black/40 border border-purple-500/20">
+                      <CardContent className="p-4">
+                        <div className="flex items-center space-x-3 text-purple-300">
+                          <Loader2 className="h-5 w-5 animate-spin text-purple-400" />
+                          <div className="flex items-center space-x-1">
+                            <span className="text-sm font-medium animate-pulse">
+                              {selectedModel === 'dalsi-aivi' ? 'DalSi AIVi' : 'DalSi AI'} is preparing response
+                            </span>
+                            <span className="inline-flex space-x-0.5">
+                              <span className="animate-[bounce_1s_ease-in-out_infinite]">.</span>
+                              <span className="animate-[bounce_1s_ease-in-out_0.1s_infinite]">.</span>
+                              <span className="animate-[bounce_1s_ease-in-out_0.2s_infinite]">.</span>
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
                 </div>
               </div>
@@ -1432,13 +1615,30 @@ How can I assist you today?`,
                 onChange={handleImageUpload} 
               />
             </div>
-            <Button 
-              onClick={handleSendMessage} 
-              disabled={isLoading || isStreaming || (!inputMessage.trim() && !selectedImage) || usageStatus.needsLogin || usageStatus.needsSubscription}
-              className="h-11 w-11 p-0 flex-shrink-0 bg-purple-600 hover:bg-purple-700 text-white border border-purple-500/30 shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
-            >
-              <Send className="h-5 w-5" />
-            </Button>
+            {(isLoading || isStreaming || isWaitingForResponse) ? (
+              <Button 
+                onClick={() => {
+                  if (abortControllerRef.current) {
+                    abortControllerRef.current.abort()
+                    setIsLoading(false)
+                    setIsStreaming(false)
+                    setIsWaitingForResponse(false)
+                    setStreamingMessage('')
+                  }
+                }}
+                className="h-11 w-11 p-0 flex-shrink-0 bg-red-600 hover:bg-red-700 text-white border border-red-500/30 shadow-lg shadow-red-500/25 hover:shadow-red-500/40 transition-all duration-300 hover:scale-105"
+              >
+                <StopCircle className="h-5 w-5" />
+              </Button>
+            ) : (
+              <Button 
+                onClick={handleSendMessage} 
+                disabled={(!inputMessage.trim() && !selectedImage) || usageStatus.needsLogin || usageStatus.needsSubscription}
+                className="h-11 w-11 p-0 flex-shrink-0 bg-purple-600 hover:bg-purple-700 text-white border border-purple-500/30 shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+              >
+                <Send className="h-5 w-5" />
+              </Button>
+            )}
           </div>
           <p className="text-xs text-muted-foreground mt-2 text-center">
             DalSi AI can make mistakes. Consider checking important information. • Code snippets are syntax highlighted and copyable.

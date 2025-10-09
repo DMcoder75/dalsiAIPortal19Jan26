@@ -14,11 +14,23 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [guestSessionId, setGuestSessionId] = useState(null)
 
   // Check for existing session on mount
   useEffect(() => {
     checkSession()
+    initGuestSession()
   }, [])
+
+  const initGuestSession = () => {
+    // Generate or retrieve guest session ID
+    let sessionId = localStorage.getItem('guest_session_id')
+    if (!sessionId) {
+      sessionId = `guest_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
+      localStorage.setItem('guest_session_id', sessionId)
+    }
+    setGuestSessionId(sessionId)
+  }
 
   const checkSession = async () => {
     try {
@@ -36,14 +48,8 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  const login = async (userData) => {
+  const login = (userData) => {
     setUser(userData)
-    // Trigger guest message migration if there are any
-    const guestMessages = JSON.parse(localStorage.getItem('guest_messages') || '[]')
-    if (guestMessages.length > 0) {
-      // Set a flag to trigger migration in ChatInterface
-      localStorage.setItem('pending_guest_migration', 'true')
-    }
   }
 
   const logout = async () => {
@@ -55,12 +61,21 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  const clearGuestSession = () => {
+    localStorage.removeItem('guest_session_id')
+    localStorage.removeItem('guest_messages')
+    localStorage.removeItem('dalsi_guest_messages')
+    setGuestSessionId(null)
+  }
+
   const value = {
     user,
     loading,
     login,
     logout,
-    checkSession
+    checkSession,
+    guestSessionId,
+    clearGuestSession
   }
 
   return (
