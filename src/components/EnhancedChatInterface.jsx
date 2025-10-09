@@ -36,6 +36,7 @@ import { supabase } from '../lib/supabase'
 import * as dalsiAPI from '../lib/dalsiAPI'
 import { useAuth } from '../contexts/AuthContext'
 import { ChatOptionsMenu } from './ChatOptionsMenu'
+import ExperienceNav from './ExperienceNav'
 import { 
   getUsageStatus, 
   incrementGuestMessageCount,

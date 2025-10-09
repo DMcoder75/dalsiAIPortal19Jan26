@@ -12,6 +12,32 @@ import SitemapPage from './SitemapPage'
 import AuthModal from './AuthModal'
 import { useAuth } from '../contexts/AuthContext'
 
+// Model Overview Pages
+import DalsiAIModelPage from './models/DalsiAIModelPage'
+import DalsiAIViModelPage from './models/DalsiAIViModelPage'
+import DalsiAIVdModelPage from './models/DalsiAIVdModelPage'
+
+// Product Pages - Text AI
+import WriterProPage from './products/WriterProPage'
+import CodeGeniusPage from './products/CodeGeniusPage'
+import BusinessSuitePage from './products/BusinessSuitePage'
+import ResearcherPage from './products/ResearcherPage'
+import ChatbotBuilderPage from './products/ChatbotBuilderPage'
+
+// Product Pages - Vision AI
+import VisionScanPage from './products/VisionScanPage'
+import MedVisionPage from './products/MedVisionPage'
+import ArtStudioPage from './products/ArtStudioPage'
+import InspectorPage from './products/InspectorPage'
+import BrandGuardPage from './products/BrandGuardPage'
+
+// Product Pages - Media AI
+import MovieMakerPage from './products/MovieMakerPage'
+import TranslateGlobalPage from './products/TranslateGlobalPage'
+import MusicStudioPage from './products/MusicStudioPage'
+import VideoAdsPage from './products/VideoAdsPage'
+import LearningPlatformPage from './products/LearningPlatformPage'
+
 export default function Router() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname)
   const [showAuthModal, setShowAuthModal] = useState(false)
@@ -45,10 +71,58 @@ export default function Router() {
       case '/chat':
       case '/experience':
         return <EnhancedChatInterface />
+      
+      // Model Overview Pages
+      case '/models/dalsi-ai':
+        return <DalsiAIModelPage />
+      case '/models/dalsi-ai-vi':
+        return <DalsiAIViModelPage />
+      case '/models/dalsi-ai-vd':
+        return <DalsiAIVdModelPage />
+      
+      // Text AI Products
+      case '/products/writer-pro':
+        return <WriterProPage />
+      case '/products/code-genius':
+        return <CodeGeniusPage />
+      case '/products/business-suite':
+        return <BusinessSuitePage />
+      case '/products/researcher':
+        return <ResearcherPage />
+      case '/products/chatbot-builder':
+        return <ChatbotBuilderPage />
+      
+      // Vision AI Products
+      case '/products/vision-scan':
+        return <VisionScanPage />
+      case '/products/medvision':
+        return <MedVisionPage />
+      case '/products/art-studio':
+        return <ArtStudioPage />
+      case '/products/inspector':
+        return <InspectorPage />
+      case '/products/brand-guard':
+        return <BrandGuardPage />
+      
+      // Media AI Products
+      case '/products/moviemaker':
+        return <MovieMakerPage />
+      case '/products/translate-global':
+        return <TranslateGlobalPage />
+      case '/products/music-studio':
+        return <MusicStudioPage />
+      case '/products/video-ads':
+        return <VideoAdsPage />
+      case '/products/learning-platform':
+        return <LearningPlatformPage />
+      
+      // Legacy routes (keeping for backward compatibility)
       case '/products/dalsi-ai':
         return <DalSiAIPage />
       case '/products/dalsi-aivi':
         return <DalSiAIViPage />
+      
+      // Other pages
       case '/about':
         return <AboutPage />
       case '/contact':
