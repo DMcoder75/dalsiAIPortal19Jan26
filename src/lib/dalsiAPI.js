@@ -33,7 +33,7 @@ export const getAvailableModels = (subscription) => {
     {
       id: 'dalsi-ai',
       name: 'DalSi AI',
-      description: 'Text-based Phi-3 model for healthcare, education, and general AI assistance',
+      description: 'Text-based AI model for healthcare, education, and general AI assistance',
       free: true,
       url: DALSIAI_URL
     }

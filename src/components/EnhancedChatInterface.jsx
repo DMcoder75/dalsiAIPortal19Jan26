@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
-import { Card, CardContent } from './ui/card'
+import { Card, CardContent, CardHeader } from './ui/card'
 import { 
  Send, 
  Plus, 
@@ -30,7 +30,8 @@ import {
  Archive,
  ChevronDown,
  StopCircle,
- Loader2
+ Loader2,
+ DollarSign
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import * as dalsiAPI from '../lib/dalsiAPI'
@@ -38,15 +39,19 @@ import { useAuth } from '../contexts/AuthContext'
 import { ChatOptionsMenu } from './ChatOptionsMenu'
 import ExperienceNav from './ExperienceNav'
 import { logChatApiCall, logGuestApiCall, getClientIp } from '../services/apiLogging'
+import { trackFunnelStep } from '../services/analyticsAPI'
 import { loggingDiagnostics } from '../services/loggingDiagnostics'
 import { 
  getUsageStatus, 
  incrementGuestMessageCount,
  canGuestSendMessage,
- canUserSendMessage 
+ canUserSendMessage,
+ getGuestMessageCount,
+ fetchGuestLimit // <--- NEW: Import fetch function
 } from '../lib/usageTracking'
 import logo from '../assets/DalSiAILogo2.png'
 import neoDalsiLogo from '../assets/neoDalsiLogo.png'
+import { checkFriction, logFrictionAction } from '../services/frictionAPI'
 
 // Code syntax highlighting component
 const CodeBlock = ({ code, language = 'javascript' }) => {
@@ -350,7 +355,7 @@ const UsageLimitWarning = ({ usageStatus, onUpgrade, onLogin }) => {
    </div>
    <Button 
     onClick={onLogin} 
-    className="bg-blue-600 hover:bg-blue-700 text-white border border-blue-500/30 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 hover:scale-105 px-6 py-2"
+    className="bg-blue-500 hover:bg-blue-600 text-white font-bold shadow-lg shadow-blue-500/30 transition-all duration-300 hover:scale-105"
    >
     Sign In
    </Button>
@@ -360,69 +365,32 @@ const UsageLimitWarning = ({ usageStatus, onUpgrade, onLogin }) => {
  )
  }
 
- // User needs subscription
+ // Logged-in user needs to upgrade
  if (usageStatus.needsSubscription) {
  return (
   <div className="mx-4 mb-4 relative overflow-hidden">
-  <div className="absolute inset-0 bg-purple-900/30 backdrop-blur-sm rounded-xl text-white"></div>
-  <div className="relative p-4 border border-purple-500/40 rounded-xl shadow-xl shadow-purple-500/25">
+  <div className="absolute inset-0 bg-purple-900/20 backdrop-blur-sm rounded-xl"></div>
+  <div className="relative p-4 border border-purple-500/30 rounded-xl shadow-lg shadow-purple-500/20">
    <div className="flex items-center justify-between">
    <div className="flex items-center space-x-4">
-    <div className="p-3 bg-purple-500/20 rounded-xl backdrop-blur-sm text-white">
+    <div className="p-3 bg-purple-500/20 rounded-xl backdrop-blur-sm">
     <Crown className="h-6 w-6 text-purple-400" />
     </div>
     <div>
     <h3 className="font-bold text-lg text-purple-100 mb-1">
-     Unlock Unlimited Access
+     Unlock Your Full Potential
     </h3>
     <p className="text-sm text-purple-300">
-     You've used all {usageStatus.limit} free messages. Upgrade for unlimited AI conversations!
+     You've reached your free message limit. Upgrade to a Pro plan for unlimited access.
     </p>
     </div>
    </div>
    <Button 
     onClick={onUpgrade} 
-    className="bg-purple-600 hover:bg-purple-700 text-white border border-purple-500/30 shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all duration-300 hover:scale-105 px-6 py-2 text-white"
+    className="bg-purple-500 hover:bg-purple-600 text-white font-bold shadow-lg shadow-purple-500/30 transition-all duration-300 hover:scale-105"
    >
-    <Crown className="mr-2 h-4 w-4" />
     Upgrade Now
    </Button>
-   </div>
-  </div>
-  </div>
- )
- }
-
- // Show remaining messages
- if (usageStatus.remaining > 0 && usageStatus.remaining < Infinity) {
- const percentage = (usageStatus.remaining / usageStatus.limit) * 100
- return (
-  <div className="mx-4 mb-4 relative overflow-hidden">
-  <div className="absolute inset-0 bg-yellow-900/20 backdrop-blur-sm rounded-xl"></div>
-  <div className="relative p-4 border border-yellow-500/30 rounded-xl shadow-lg shadow-yellow-500/20">
-   <div className="flex items-center justify-between">
-   <div className="flex items-center space-x-3">
-    <div className="p-2 bg-yellow-500/20 rounded-lg backdrop-blur-sm">
-    <AlertCircle className="h-5 w-5 text-yellow-400" />
-    </div>
-    <div>
-    <h3 className="font-semibold text-sm text-yellow-100 mb-1">
-     {usageStatus.isGuest ? 'Guest Mode' : 'Free Tier Active'}
-    </h3>
-    <p className="text-xs text-yellow-300">
-     {usageStatus.remaining} message{usageStatus.remaining !== 1 ? 's' : ''} remaining
-    </p>
-    </div>
-   </div>
-   <div className="flex items-center space-x-2">
-    <div className="w-16 h-2 bg-yellow-900/50 rounded-full overflow-hidden">
-    <div 
-     className="h-full bg-yellow-500 transition-all duration-500"
-     style={{ width: `${percentage}%` }}
-    ></div>
-    </div>
-    <span className="text-xs text-yellow-300 font-mono">{usageStatus.remaining}/{usageStatus.limit}</span>
-   </div>
    </div>
   </div>
   </div>
@@ -432,74 +400,51 @@ const UsageLimitWarning = ({ usageStatus, onUpgrade, onLogin }) => {
  return null
 }
 
-export default function EnhancedChatInterface() {
- const { user, loading: authLoading, logout, guestSessionId, clearGuestSession } = useAuth()
- const [messages, setMessages] = useState([])
+const EnhancedChatInterface = () => {
+ const { user, authLoading, logout } = useAuth()
+ const [messages, setMessages] = useState([
+ {
+  id: 'welcome',
+  sender: 'ai',
+  content: 'Welcome to the DalSi AI Experience! I am your personal AI assistant, ready to help with any questions you have about Healthcare, Education, or AI. How can I assist you today?',
+  timestamp: new Date().toISOString()
+ }
+ ])
  const [inputMessage, setInputMessage] = useState('')
  const [isLoading, setIsLoading] = useState(false)
- const [chats, setChats] = useState([])
  const [currentChatId, setCurrentChatId] = useState(null)
+ const [chats, setChats] = useState([])
  const [sidebarOpen, setSidebarOpen] = useState(true)
- const [userSubscription, setUserSubscription] = useState(null)
- const [userUsageCount, setUserUsageCount] = useState(0)
- const [guestMessageCount, setGuestMessageCount] = useState(0)
  const [selectedModel, setSelectedModel] = useState('dalsi-ai')
  const [availableModels, setAvailableModels] = useState([])
- const [apiHealthy, setApiHealthy] = useState({})
- const [streamingMessage, setStreamingMessage] = useState('')
- const [isStreaming, setIsStreaming] = useState(false)
+ const [userUsageCount, setUserUsageCount] = useState(0)
+ const [userSubscription, setUserSubscription] = useState(null)
+ const [apiHealthy, setApiHealthy] = useState({ 'dalsi-ai': null, 'dalsi-aivi': null })
  const [selectedImage, setSelectedImage] = useState(null)
  const [imagePreview, setImagePreview] = useState(null)
  const [showArchives, setShowArchives] = useState(false)
+ const [isStreaming, setIsStreaming] = useState(false)
+ const [streamingMessage, setStreamingMessage] = useState('')
  const [isWaitingForResponse, setIsWaitingForResponse] = useState(false)
+ const [isGuestLimitLoading, setIsGuestLimitLoading] = useState(true) // <--- NEW: Loading state
  const [guestUserId, setGuestUserId] = useState(null)
  const [clientIp, setClientIp] = useState(null)
+ const [guestMessageCount, setGuestMessageCount] = useState(getGuestMessageCount())
+ const [frictionModalData, setFrictionModalData] = useState(null)
+ const [isFrictionModalOpen, setIsFrictionModalOpen] = useState(false)
+
  const messagesEndRef = useRef(null)
  const fileInputRef = useRef(null)
  const abortControllerRef = useRef(null)
 
- // Professional welcome message with proper formatting
- const welcomeMessage = {
- id: 'welcome',
- sender: 'ai',
- content: `Hello! I'm **DalSi AI**, your intelligent assistant powered by advanced artificial intelligence.
-
-**Core Capabilities:**
-
-**Healthcare Queries**
-Medical information, symptoms analysis, treatment guidance, and clinical decision support
-
-**Educational Support** 
-Learning materials, explanations, academic assistance, and curriculum development
-
-**AI Consultation**
-Technology insights, automation solutions, AI implementation, and strategic planning
-
-**General Assistance**
-Research, analysis, problem-solving, and comprehensive support across domains
-
-**Available Models:**
-• **DalSiAI** - Advanced text-based conversations and analysis
-• **DalSiAIVi** - Multimodal AI that understands both text and images
-
-How can I assist you today?`,
- timestamp: new Date().toISOString()
- }
-
- useEffect(() => {
- if (!currentChatId && messages.length === 0) {
-  setMessages([welcomeMessage])
- }
- }, [currentChatId])
-
- useEffect(() => {
- scrollToBottom()
- }, [messages, streamingMessage])
-
- useEffect(() => {
-  console.log('🔄 [EFFECT] Chat initialization effect triggered, user:', user ? user.email : 'null')
-  const initializeChat = async () => {
+ useEffect(() => { const initializeChat = async () => {
   console.log('🚀 Starting chat initialization...')
+  
+  // NEW: Fetch dynamic guest limit and set loading state
+  console.log('🌐 Fetching dynamic guest limit...')
+  await fetchGuestLimit()
+  setIsGuestLimitLoading(false)
+  console.log('✅ Dynamic guest limit loaded.')
   
   // Initialize diagnostics
   console.log('📊 Initializing logging diagnostics...')
@@ -532,6 +477,13 @@ How can I assist you today?`,
    console.log('✅ User authenticated:', user.email)
   }
   
+  // Track funnel step: guest_created or account_created (if logged in)
+  if (user) {
+    trackFunnelStep(user.id, 'account_created', { email: user.email })
+  } else if (guestUserId) {
+    trackFunnelStep(guestUserId, 'guest_created', { ip_address: clientIp })
+  }
+  
   // Migrate guest messages to database when user logs in
   if (user) {
   await migrateGuestMessages()
@@ -553,7 +505,7 @@ How can I assist you today?`,
  }
  
  initializeChat()
- }, [user])
+}, [user])
 
  const scrollToBottom = () => {
  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -666,338 +618,299 @@ How can I assist you today?`,
   localStorage.removeItem('guest_messages')
   localStorage.removeItem('guest_session_id')
   localStorage.removeItem('dalsi_guest_messages')
-  console.log('🧹 Cleared localStorage')
-  
-  // Clear session from context
-  if (clearGuestSession) {
-  clearGuestSession()
-  console.log('🧹 Cleared guest session from context')
-  }
-  
-  // Reload chats to show the new chat in sidebar
-  console.log('🔄 Reloading chats to show new chat in sidebar...')
-  await loadChats()
-  console.log('✅ Chats reloaded')
-
-  console.log('✅ Guest messages migrated successfully! New chat ID:', newChat.id)
+  console.log('🧹 Cleaned up guest data from localStorage')
  } catch (error) {
   console.error('❌ Error migrating guest messages:', error)
  }
  }
 
- const initializeGuestUser = async () => {
- try {
-  console.log('🔍 Initializing guest user...')
-  const { data: guestUser, error } = await supabase
-   .from('users')
-   .select('id')
-   .eq('email', 'dalsiainoreply@gmail.com')
-   .maybeSingle()
-  
-  console.log('Guest user query result:', { guestUser, error })
-  
-  if (error) {
-   console.error('❌ Error fetching guest user:', error)
-   return
+ useEffect(() => {
+ if (user) {
+  loadChats()
+  fetchUserUsage()
+ } else {
+  setChats([])
+  setMessages([
+  {
+   id: 'welcome',
+   sender: 'ai',
+   content: 'Welcome to the DalSi AI Experience! I am your personal AI assistant, ready to help with any questions you have about Healthcare, Education, or AI. How can I assist you today?',
+   timestamp: new Date().toISOString()
   }
-  
-  if (guestUser) {
-   setGuestUserId(guestUser.id)
-   console.log('✅ Guest user ID loaded:', guestUser.id)
-  } else {
-   console.warn('⚠️ Guest user not found in database')
-  }
- } catch (error) {
-  console.error('❌ Error initializing guest user:', error)
+  ])
  }
-}
+ }, [user])
 
-
+ useEffect(() => {
+ scrollToBottom()
+ }, [messages, streamingMessage])
 
  const checkUser = async () => {
- try {
-  if (user) {
-  await loadChats()
-  await loadUserSubscription(user.id)
-  await loadUserUsage(user.id)
-  }
- } catch (error) {
-  console.error('Error checking user:', error)
- }
- }
-
- const loadUserSubscription = async (userId) => {
- try {
-  const { data, error } = await supabase
-  .from('user_subscriptions')
-  .select('*')
-  .eq('user_id', userId)
-  .eq('status', 'active')
-  .maybeSingle() // Use maybeSingle instead of single to avoid 406 errors
-
-  if (error) {
-  console.error('Error loading subscription:', error)
-  return
-  }
-  setUserSubscription(data)
- } catch (error) {
-  console.error('Error loading subscription:', error)
- }
- }
-
- const loadUserUsage = async (userId) => {
- try {
-  // Count user's messages for DalSiAI model
-  const { count, error } = await supabase
-  .from('messages')
-  .select('*', { count: 'exact', head: true })
-  .eq('sender', 'user')
-  .in('chat_id', 
-   await supabase
-   .from('chats')
-   .select('id')
-   .eq('user_id', userId)
-   .then(res => res.data?.map(chat => chat.id) || [])
-  )
-
-  if (error) throw error
-  setUserUsageCount(count || 0)
- } catch (error) {
-  console.error('Error loading usage:', error)
- }
+  // This function is handled by the AuthContext, but we can add checks here if needed
  }
 
  const loadAvailableModels = async () => {
- const models = dalsiAPI.getAvailableModels(userSubscription)
- setAvailableModels(models)
+  console.log('🔄 Loading available AI models...')
+  try {
+  const models = await dalsiAPI.getAvailableModels()
+  setAvailableModels(models)
+  console.log('✅ Models loaded:', models.map(m => m.name).join(', '))
+  } catch (error) {
+  console.error('❌ Error loading models:', error)
+  }
  }
 
  const checkAPIHealth = async () => {
- const healthStatus = {}
- 
- for (const model of availableModels) {
-  try {
-  const health = await dalsiAPI.healthCheck(model.id)
-  healthStatus[model.id] = health.model_loaded && health.status === 'healthy'
-  } catch (error) {
-  healthStatus[model.id] = false
-  }
+  console.log('🩺 Checking API health...')
+  const healthStatuses = await dalsiAPI.checkAPIHealth()
+  setApiHealthy(healthStatuses)
+  console.log('✅ API health checked:', healthStatuses)
  }
- 
- setApiHealthy(healthStatus)
+
+ const fetchUserUsage = async () => {
+  if (!user) return
+  console.log('🔄 Fetching user usage data...')
+  try {
+  const { data, error } = await supabase
+   .from('messages')
+   .select('id', { count: 'exact' })
+   .eq('user_id', user.id)
+   .eq('sender', 'user')
+
+  if (error) throw error
+
+  setUserUsageCount(data.length)
+  console.log('📊 User has sent', data.length, 'messages')
+
+  // Fetch subscription status
+  const { data: sub, error: subError } = await supabase
+   .from('user_subscriptions')
+   .select('*')
+   .eq('user_id', user.id)
+   .eq('status', 'active')
+   .maybeSingle()
+
+  if (subError) throw subError
+
+  setUserSubscription(sub)
+  console.log('💳 User subscription status:', sub ? sub.plan_type : 'none')
+  } catch (error) {
+  console.error('❌ Error fetching user usage:', error)
+  }
  }
 
  const loadChats = async () => {
- if (!user) return // Don't load chats for guest users
- 
- try {
-  console.log('🔄 Loading chats for user:', user.id)
-  
+  if (!user) return
+  console.log('🔄 Loading user chats...')
+  try {
   const { data, error } = await supabase
-  .from('chats')
-  .select('*')
-  .eq('user_id', user.id) // Filter by current user
-  .order('updated_at', { ascending: false })
+   .from('chats')
+   .select('*')
+   .eq('user_id', user.id)
+   .order('created_at', { ascending: false })
 
   if (error) throw error
-  
-  console.log('✅ Loaded', data?.length || 0, 'chats')
-  setChats(data || [])
- } catch (error) {
+
+  setChats(data)
+  console.log('✅ Loaded', data.length, 'chats')
+  } catch (error) {
   console.error('❌ Error loading chats:', error)
- }
- }
-
- const loadMessages = async (chatId) => {
- try {
-  const { data, error } = await supabase
-  .from('messages')
-  .select('*')
-  .eq('chat_id', chatId)
-  .order('timestamp', { ascending: true })
-
-  if (error) throw error
-  setMessages(data || [])
- } catch (error) {
-  console.error('Error loading messages:', error)
- }
+  }
  }
 
- const createNewChat = async () => {
- if (!user) {
-  const newChatId = `demo-${Date.now()}`
-  setCurrentChatId(newChatId)
-  setMessages([welcomeMessage])
-  return
- }
-
- try {
-  const { data, error } = await supabase
-  .from('chats')
-  .insert([{ 
-   user_id: user.id, 
-   title: 'New Chat',
-   selected_model_id: selectedModel
-  }])
-  .select()
-  .single()
-
-  if (error) throw error
-  
-  setCurrentChatId(data.id)
-  setMessages([welcomeMessage])
-  loadChats()
- } catch (error) {
-  console.error('Error creating chat:', error)
- }
+ const createNewChat = () => {
+  setCurrentChatId(null)
+  setMessages([
+  {
+   id: 'welcome',
+   sender: 'ai',
+   content: 'New chat started. How can I help you?',
+   timestamp: new Date().toISOString()
+  }
+  ])
+  console.log('✨ New chat created')
  }
 
  const selectChat = async (chatId) => {
- setCurrentChatId(chatId)
- if (user) {
-  await loadMessages(chatId)
- }
+  console.log('🔄 Selecting chat:', chatId)
+  setCurrentChatId(chatId)
+  try {
+  const { data, error } = await supabase
+   .from('messages')
+   .select('*')
+   .eq('chat_id', chatId)
+   .order('created_at', { ascending: true })
+
+  if (error) throw error
+
+  setMessages(data)
+  console.log('✅ Loaded', data.length, 'messages for chat', chatId)
+  } catch (error) {
+  console.error('❌ Error loading messages for chat:', error)
+  }
  }
 
  const handleDeleteChat = async (chatId) => {
- if (!user) return
+  if (confirm('Are you sure you want to delete this chat? This action cannot be undone.')) {
+  console.log('🗑️ Deleting chat:', chatId)
+  try {
+   // First, delete all messages in the chat
+   const { error: msgError } = await supabase
+   .from('messages')
+   .delete()
+   .eq('chat_id', chatId)
+   
+   if (msgError) throw msgError
+   
+   // Then, delete the chat itself
+   const { error: chatError } = await supabase
+   .from('chats')
+   .delete()
+   .eq('id', chatId)
 
- try {
-  // Delete all messages in the chat first
-  await supabase
-  .from('messages')
-  .delete()
-  .eq('chat_id', chatId)
+   if (chatError) throw chatError
 
-  // Delete the chat
-  const { error } = await supabase
-  .from('chats')
-  .delete()
-  .eq('id', chatId)
-
-  if (error) throw error
-  
-  if (currentChatId === chatId) {
-  setCurrentChatId(null)
-  setMessages([welcomeMessage])
+   console.log('✅ Chat deleted successfully')
+   setChats(chats.filter(c => c.id !== chatId))
+   if (currentChatId === chatId) {
+   createNewChat()
+   }
+  } catch (error) {
+   console.error('❌ Error deleting chat:', error)
+   alert('Failed to delete chat.')
   }
-  loadChats()
- } catch (error) {
-  console.error('Error deleting chat:', error)
- }
+  }
  }
 
  const handleRenameChat = async (chatId, newTitle) => {
- if (!user) return
-
- try {
+  console.log('✏️ Renaming chat', chatId, 'to', newTitle)
+  try {
   const { error } = await supabase
-  .from('chats')
-  .update({ title: newTitle })
-  .eq('id', chatId)
+   .from('chats')
+   .update({ title: newTitle })
+   .eq('id', chatId)
 
   if (error) throw error
-  
-  loadChats()
- } catch (error) {
-  console.error('Error renaming chat:', error)
- }
+
+  console.log('✅ Chat renamed successfully')
+  setChats(chats.map(c => c.id === chatId ? { ...c, title: newTitle } : c))
+  } catch (error) {
+  console.error('❌ Error renaming chat:', error)
+  alert('Failed to rename chat.')
+  }
  }
 
  const handleArchiveChat = async (chatId) => {
- if (!user) return
-
- try {
+  console.log('🗄️ Archiving chat:', chatId)
+  try {
   const { error } = await supabase
-  .from('chats')
-  .update({ archived: true })
-  .eq('id', chatId)
+   .from('chats')
+   .update({ archived: true })
+   .eq('id', chatId)
 
   if (error) throw error
-  
-  if (currentChatId === chatId) {
-  setCurrentChatId(null)
-  setMessages([welcomeMessage])
+
+  console.log('✅ Chat archived successfully')
+  setChats(chats.map(c => c.id === chatId ? { ...c, archived: true } : c))
+  } catch (error) {
+  console.error('❌ Error archiving chat:', error)
+  alert('Failed to archive chat.')
   }
-  loadChats()
- } catch (error) {
-  console.error('Error archiving chat:', error)
- }
  }
 
  const handleUnarchiveChat = async (chatId) => {
- if (!user) return
-
- try {
+  console.log('📂 Unarchiving chat:', chatId)
+  try {
   const { error } = await supabase
-  .from('chats')
-  .update({ archived: false })
-  .eq('id', chatId)
+   .from('chats')
+   .update({ archived: false })
+   .eq('id', chatId)
 
   if (error) throw error
-  
-  loadChats()
- } catch (error) {
-  console.error('Error unarchiving chat:', error)
- }
- }
 
- // Legacy function for compatibility
- const deleteChat = handleDeleteChat
+  console.log('✅ Chat unarchived successfully')
+  setChats(chats.map(c => c.id === chatId ? { ...c, archived: false } : c))
+  } catch (error) {
+  console.error('❌ Error unarchiving chat:', error)
+  alert('Failed to unarchive chat.')
+  }
+ }
 
  const saveMessage = async (chatId, sender, content, metadata = {}) => {
- if (!user || !chatId) return
-
- try {
+  console.log('💾 Saving message...')
+  try {
   const { error } = await supabase
-  .from('messages')
-  .insert([{
+   .from('messages')
+   .insert([{
    chat_id: chatId,
+   user_id: user.id,
    sender,
    content,
-   content_type: metadata.content_type || 'text',
-   metadata: {
-   ...metadata,
-   model: selectedModel // Store model name in metadata instead of model_id
-   },
-   context_data: { timestamp: new Date().toISOString() }
-  }])
+   metadata
+   }])
 
-  if (error) {
-  console.error('❌ Error saving message to database:', error)
-  throw error
+  if (error) throw error
+  console.log('✅ Message saved successfully')
+  } catch (error) {
+  console.error('❌ Error saving message:', error)
   }
-
-  console.log('✅ Message saved:', sender, content.substring(0, 50))
-
-  await supabase
-  .from('chats')
-  .update({ updated_at: new Date().toISOString() })
-  .eq('id', chatId)
-
- } catch (error) {
-  console.error('❌ Error in saveMessage:', error)
  }
+
+ const initializeGuestUser = async () => {
+  let sessionId = localStorage.getItem('guest_session_id')
+  if (!sessionId) {
+  sessionId = `guest_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`
+  localStorage.setItem('guest_session_id', sessionId)
+  console.log('✨ New guest session created:', sessionId)
+  }
+  setGuestUserId(sessionId)
+  
+  // Check if guest user exists in DB, if not, create one
+  try {
+  const { data, error } = await supabase
+   .from('guest_users')
+   .select('id')
+   .eq('session_id', sessionId)
+   .maybeSingle()
+   
+  if (error) throw error
+  
+  if (!data) {
+   console.log('➕ Creating new guest user in database...')
+   const { error: insertError } = await supabase
+   .from('guest_users')
+   .insert([{ session_id: sessionId, ip_address: clientIp }])
+   
+   if (insertError) throw insertError
+   console.log('✅ Guest user created in database')
+  }
+  } catch (error) {
+  console.error('❌ Error initializing guest user in DB:', error)
+  }
  }
 
  const saveGuestMessageToDB = async (message) => {
  try {
-  // Get or create session ID with better randomization
-  let sessionId = guestSessionId
+  const sessionId = guestUserId || localStorage.getItem('guest_session_id')
   if (!sessionId) {
-  sessionId = localStorage.getItem('guest_session_id')
-  if (!sessionId) {
-   // Generate highly random session ID to avoid collisions
-   const timestamp = Date.now()
-   const random1 = Math.random().toString(36).substring(2, 15)
-   const random2 = Math.random().toString(36).substring(2, 15)
-   sessionId = `guest_${timestamp}_${random1}${random2}`
-   localStorage.setItem('guest_session_id', sessionId)
-  }
-  console.log('⚠️ Using fallback session ID:', sessionId)
+  console.warn('⚠️ No session ID for guest message, cannot save to DB')
+  return
   }
 
-  const guestMessages = JSON.parse(localStorage.getItem('guest_messages') || '[]')
+  // Get current messages from DB
+  const { data: existing, error: fetchError } = await supabase
+  .from('guest_conversations')
+  .select('messages')
+  .eq('session_id', sessionId)
+  .maybeSingle()
+
+  if (fetchError) {
+  console.error('❌ Error fetching existing guest messages:', fetchError)
+  return
+  }
+
+  const guestMessages = existing?.messages || []
+  guestMessages.push(message)
   
   console.log('💾 Upserting to DB:', {
   session_id: sessionId,
@@ -1051,6 +964,21 @@ How can I assist you today?`,
  }
 
  const handleSendMessage = async () => {
+    // New Friction API Check
+    const userId = user ? user.id : guestUserId;
+    const tier = userSubscription?.tier || 'free';
+    const messageCount = user ? userUsageCount : guestMessageCount;
+
+    if (userId) {
+      const frictionResponse = await checkFriction(userId, tier, messageCount);
+      if (frictionResponse.should_show) {
+        setFrictionModalData(frictionResponse.friction_data);
+        setIsFrictionModalOpen(true);
+        // Stop message sending process
+        return;
+      }
+    }
+
  if ((!inputMessage.trim() && !selectedImage) || isLoading || isStreaming) return
 
  // Check message limit per chat (11 messages max)
@@ -1150,7 +1078,15 @@ How can I assist you today?`,
   has_image: !!currentImage,
   image_name: currentImage?.name
   })
+  // Track funnel step: first_message (if it's the first message)
+  if (messages.length === 1) {
+    trackFunnelStep(user.id, 'first_message', { model: selectedModel })
+  }
  } else if (!user) {
+  // Track funnel step: first_message (if it's the first message)
+  if (messages.length === 1) {
+    trackFunnelStep(guestUserId, 'first_message', { model: selectedModel })
+  }
   // Save guest message to localStorage AND database
   const guestMessages = JSON.parse(localStorage.getItem('guest_messages') || '[]')
   guestMessages.push(userMessage)
@@ -1286,7 +1222,6 @@ How can I assist you today?`,
     has_code: aiResponse.content.includes('```'),
     processing_time: Date.now() - userMessage.id
     })
-    console.log('✅ AI response saved to database')
    } else if (!user) {
     // Save guest AI response to localStorage AND database
     const guestMessages = JSON.parse(localStorage.getItem('guest_messages') || '[]')
@@ -1412,12 +1347,21 @@ How can I assist you today?`,
  window.showAuth?.()
  }
 
- // Calculate usage status
- const usageStatus = getUsageStatus(!user, userUsageCount, userSubscription)
- const showUsageWarning = selectedModel === 'dalsi-ai'
+  // Calculate usage status
+  const usageStatus = getUsageStatus(!user, userUsageCount, userSubscription)
+  const showUsageWarning = selectedModel === 'dalsi-ai'
 
- return (
- <div className="flex h-screen bg-background text-foreground">
+  if (isGuestLimitLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background text-foreground">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+        <span className="ml-3 text-lg">Loading AI Portal...</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex h-screen bg-background text-foreground">
   {/* Sidebar */}
   <div className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col overflow-hidden`}>
   {/* Sidebar Header */}
@@ -1553,27 +1497,33 @@ How can I assist you today?`,
     {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
    </Button>
    
-   {/* Navigation Menu */}
-   <nav className="flex items-center space-x-1 ml-4">
-    <Button variant="ghost" size="sm" onClick={() => window.location.href = '/'} className="text-xs px-2">
-    Home
+   {/* Topic-Based Chat Buttons */}
+   <div className="flex items-center space-x-2">
+    <Button 
+     variant={selectedModel === 'dalsi-ai' ? 'default' : 'outline'} 
+     size="sm" 
+     onClick={() => setSelectedModel('dalsi-ai')} 
+     className="text-xs px-3"
+    >
+     General AI
     </Button>
-    <Button variant="ghost" size="sm" onClick={() => window.location.href = '/#solutions'} className="text-xs px-2">
-    Solutions
+    <Button 
+     variant={selectedModel === 'dalsi-ai-health' ? 'default' : 'outline'} 
+     size="sm" 
+     onClick={() => setSelectedModel('dalsi-ai-health')} 
+     className="text-xs px-3"
+    >
+     Healthcare Chat
     </Button>
-    <Button variant="ghost" size="sm" onClick={() => window.location.href = '/#healthcare'} className="text-xs px-2">
-    Healthcare
+    <Button 
+     variant={selectedModel === 'dalsi-ai-edu' ? 'default' : 'outline'} 
+     size="sm" 
+     onClick={() => setSelectedModel('dalsi-ai-edu')} 
+     className="text-xs px-3"
+    >
+     Education Chat
     </Button>
-    <Button variant="ghost" size="sm" onClick={() => window.location.href = '/#education'} className="text-xs px-2">
-    Education
-    </Button>
-    <Button variant="ghost" size="sm" onClick={() => window.location.href = '/#about'} className="text-xs px-2">
-    About
-    </Button>
-    <Button variant="ghost" size="sm" onClick={() => window.location.href = '/#contact'} className="text-xs px-2">
-    Contact
-    </Button>
-   </nav>
+   </div>
    
    <ModelSelector
     selectedModel={selectedModel}
@@ -1586,7 +1536,7 @@ How can I assist you today?`,
    
    <div className="flex items-center space-x-4">
    <div className={`flex items-center space-x-2 text-sm ${apiHealthy[selectedModel] ? 'text-green-600' : 'text-red-600'}`}>
-    <div className={`w-2 h-2 rounded-full ${apiHealthy[selectedModel] ? 'bg-green-500' : 'bg-red-500'} ${apiHealthy[selectedModel] === undefined ? 'animate-pulse' : ''}`}></div>
+    <div className={`w-2 h-2 rounded-full ${apiHealthy[selectedModel] ? 'bg-green-600' : 'bg-red-600'}`}></div>
     <span>{apiHealthy[selectedModel] ? 'Online' : apiHealthy[selectedModel] === false ? 'Offline' : ''}</span>
    </div>
    <Button variant="outline" size="sm" onClick={exportChat}>
@@ -1596,14 +1546,7 @@ How can I assist you today?`,
    </div>
   </div>
 
-  {/* Usage Warning */}
-  {showUsageWarning && (
-   <UsageLimitWarning 
-   usageStatus={usageStatus}
-   onUpgrade={handleUpgrade}
-   onLogin={handleLogin}
-   />
-  )}
+  {/* // Usage Warning (Removed the old UsageLimitWarning)}
 
   {/* Messages */}
   <div className="flex-1 overflow-y-auto">
@@ -1629,6 +1572,18 @@ How can I assist you today?`,
       } backdrop-blur-sm`}></div>
       <CardContent className="p-4 relative z-10">
       <MessageContent content={msg.content} />
+      
+      {/* Placeholder for Source List */}
+      {msg.sender === 'ai' && msg.id !== 'welcome' && (
+       <div className="mt-4 pt-3 border-t border-purple-500/30">
+        <p className="text-xs font-semibold text-purple-300 mb-1">Key Sources:</p>
+        <ul className="list-disc list-inside text-xs text-purple-200 space-y-0.5">
+         <li>Source 1: Placeholder for dynamic source link</li>
+         <li>Source 2: Placeholder for dynamic source link</li>
+        </ul>
+       </div>
+      )}
+
       {msg.sender === 'ai' && msg.id !== 'welcome' && (
        <div className="flex items-center justify-end space-x-2 mt-3 opacity-0 group-hover:opacity-100 transition-all duration-300">
        <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-purple-500/20 text-purple-300 hover:text-purple-200 transition-all duration-200 text-white">
@@ -1637,7 +1592,12 @@ How can I assist you today?`,
        <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-purple-500/20 text-purple-300 hover:text-purple-200 transition-all duration-200 text-white">
         <ThumbsDown className="h-3 w-3" />
        </Button>
-       <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-purple-500/20 text-purple-300 hover:text-purple-200 transition-all duration-200 text-white">
+       <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-7 w-7 hover:bg-purple-500/20 text-purple-300 hover:text-purple-200 transition-all duration-200 text-white"
+        onClick={() => navigator.clipboard.writeText(window.location.href)} // Fix: Share button copies current URL
+       >
         <Share className="h-3 w-3" />
        </Button>
        </div>
@@ -1716,6 +1676,16 @@ How can I assist you today?`,
   </div>
 
   {/* Input Area */}
+  {/* Usage Status Banner */}
+  {usageStatus.remaining !== Infinity && (
+   <div className="max-w-4xl mx-auto">
+    <UsageStatusDisplay 
+     usageStatus={usageStatus}
+     onUpgrade={handleUpgrade}
+     onLogin={handleLogin}
+    />
+   </div>
+  )}
   <div className="p-4 border-t border-border bg-background">
    {/* Image Preview */}
    {imagePreview && (
@@ -1733,14 +1703,22 @@ How can I assist you today?`,
    )}
 
    <div className="flex items-end space-x-3">
-   <div className="flex-1 relative">
+	   <div className="flex-1 relative">
+    <Button
+     variant="ghost"
+     size="icon"
+     className="absolute left-2 top-1/2 transform -translate-y-1/2 h-8 w-8"
+     onClick={() => alert('Voice input feature coming soon!')} // Placeholder for voice input
+    >
+     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+    </Button>
     <Input
-    placeholder={selectedModel === 'dalsi-aivi' ? "Ask anything or upload an image..." : "Ask anything about Healthcare, Education, or AI..."}
+    placeholder={usageStatus.needsLogin ? `Daily limit of ${usageStatus.limit} messages exhausted. Resets tomorrow.` : (selectedModel === 'dalsi-aivi' ? "Ask anything or upload an image..." : "Ask anything about Healthcare, Education, or AI...")}
     value={inputMessage}
     onChange={(e) => setInputMessage(e.target.value)}
     onKeyPress={handleKeyPress}
-    disabled={isLoading || isStreaming || (usageStatus.needsLogin || usageStatus.needsSubscription)}
-    className="pr-12 min-h-[44px] resize-none"
+    disabled={isLoading || isStreaming || usageStatus.needsLogin || usageStatus.needsSubscription}
+    className="pl-12 pr-12 min-h-[44px] resize-none"
     />
     {selectedModel === 'dalsi-aivi' && (
     <Button
@@ -1779,7 +1757,7 @@ How can I assist you today?`,
    ) : (
     <Button 
     onClick={handleSendMessage} 
-    disabled={(!inputMessage.trim() && !selectedImage) || usageStatus.needsLogin || usageStatus.needsSubscription}
+    disabled={(!inputMessage.trim() && !selectedImage) || usageStatus.needsLogin || usageStatus.needsSubscription || isLoading || isStreaming || isWaitingForResponse}
     className="h-11 w-11 p-0 flex-shrink-0 bg-purple-600 hover:bg-purple-700 text-white border border-purple-500/30 shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 text-white"
     >
     <Send className="h-5 w-5" />
@@ -1791,7 +1769,114 @@ How can I assist you today?`,
    </p>
   </div>
   </div>
+  <FrictionModal 
+    isOpen={isFrictionModalOpen} 
+    data={frictionModalData} 
+    userId={user ? user.id : guestUserId} // Pass the user ID
+    onDismiss={() => setIsFrictionModalOpen(false)} 
+    onUpgrade={() => {
+      setIsFrictionModalOpen(false);
+      handleUpgrade();
+    }}
+  />
  </div>
  )
 }
 
+const FrictionModal = ({ isOpen, data, onDismiss, onUpgrade, userId }) => {
+  if (!isOpen || !data) return null;
+  
+  // Track funnel step: friction_shown
+  useEffect(() => {
+    if (isOpen && data && userId) {
+      trackFunnelStep(userId, 'friction_shown', { friction_type: data.friction_type, event_id: data.event_id });
+    }
+  }, [isOpen, data, userId]);
+
+  const handleDismiss = () => {
+    logFrictionAction(data.event_id, 'dismissed');
+    trackFunnelStep(userId, 'friction_dismissed', { friction_type: data.friction_type, event_id: data.event_id });
+    onDismiss();
+  };
+
+  const handleUpgrade = () => {
+    logFrictionAction(data.event_id, 'upgraded');
+    trackFunnelStep(userId, 'friction_accepted', { friction_type: data.friction_type, event_id: data.event_id });
+    onUpgrade();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+      <Card className="w-full max-w-md bg-card border-primary shadow-2xl relative overflow-hidden">
+        <CardHeader className="text-center">
+          <div className="mx-auto w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center border-2 border-primary mb-4">
+            <DollarSign className="h-8 w-8 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground">{data.message_template.title}</h2>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-center mb-6">{data.message_template.message}</p>
+          <div className="space-y-2 mb-6">
+            {data.message_template.features.map((feature, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-500" />
+                <span className="text-sm text-muted-foreground">{feature}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-col gap-3">
+            <Button onClick={handleUpgrade} className="w-full bg-primary hover:bg-primary/90 text-white">{data.message_template.cta_text}</Button>
+            <Button onClick={handleDismiss} variant="ghost" className="w-full text-muted-foreground">{data.message_template.dismiss_text}</Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default EnhancedChatInterface
+
+
+// Removed old UsageLimitWarning component definition
+
+const UsageStatusDisplay = ({ usageStatus, onUpgrade, onLogin }) => {
+  const isGuest = usageStatus.isGuest;
+  const isSubscribed = usageStatus.limit === Infinity;
+  const isFreeTier = !isGuest && !isSubscribed;
+
+  let statusText = '';
+  let statusColor = 'text-muted-foreground';
+  let button = null;
+
+  if (isSubscribed) {
+    statusText = `Plan: ${usageStatus.subscriptionType || 'Premium'} (Unlimited)`;
+    statusColor = 'text-green-500';
+  } else if (isGuest) {
+    const limitText = usageStatus.limit === 1 ? '1 free message' : `${usageStatus.limit} free messages`;
+    const remainingText = usageStatus.remaining === 1 ? '1 message' : `${usageStatus.remaining} messages`;
+    statusText = usageStatus.remaining > 0 
+      ? `Guest: ${remainingText} remaining today (out of ${usageStatus.limit}).`
+      : `Guest: Daily limit of ${usageStatus.limit} messages exhausted. Resets tomorrow.`;
+    statusColor = usageStatus.remaining > 0 ? 'text-yellow-500' : 'text-red-500';
+    button = (
+      <Button variant="outline" size="sm" onClick={onLogin} className="h-7 text-xs px-2">
+        Sign In
+      </Button>
+    );
+  } else if (isFreeTier) {
+    statusText = `Free Tier: ${usageStatus.remaining} of ${usageStatus.limit} messages remaining.`;
+    statusColor = usageStatus.remaining > 0 ? 'text-yellow-500' : 'text-red-500';
+    button = (
+      <Button variant="outline" size="sm" onClick={onUpgrade} className="h-7 text-xs px-2 bg-primary hover:bg-primary/90 text-white">
+        Upgrade
+      </Button>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg border border-border/50">
+      <span className={`text-sm font-medium ${statusColor}`}>{statusText}</span>
+      {button}
+    </div>
+  );
+};
