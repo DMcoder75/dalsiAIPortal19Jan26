@@ -85,6 +85,11 @@ export default function Experience() {
           if (guestUserId) {
             const guestApiKey = await getUserApiKey(guestUserId)
             if (guestApiKey) {
+              console.log('📋 Full Guest API Key Object:', guestApiKey)
+              console.log('🔑 Guest API Key ID:', guestApiKey.id)
+              console.log('📝 Guest API Key Name:', guestApiKey.name)
+              console.log('🏷️ Guest API Key Prefix:', guestApiKey.key_prefix)
+              console.log('🔐 Guest API Key Hash:', guestApiKey.key_hash)
               dalsiAPI.setApiKey(guestApiKey.id)
               console.log('✅ Guest API key set')
             }

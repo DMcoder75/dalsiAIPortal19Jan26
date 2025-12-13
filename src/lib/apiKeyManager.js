@@ -35,7 +35,7 @@ export const getUserApiKey = async (userId) => {
     
     const { data, error } = await supabase
       .from('api_keys')
-      .select('id, user_id, key_prefix, name, is_active, subscription_tier, rate_limit_per_minute, rate_limit_per_hour, rate_limit_per_day')
+      .select('id, user_id, key_prefix, key_hash, name, is_active, subscription_tier, rate_limit_per_minute, rate_limit_per_hour, rate_limit_per_day')
       .eq('user_id', userId)
       .eq('is_active', true)
       .order('created_at', { ascending: false })
