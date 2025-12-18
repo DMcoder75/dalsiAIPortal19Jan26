@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import logo from '../assets/DalSiAILogo2.png'
 import { AIModeResponseFormatter } from '../components/AIModeResponseFormatter'
+import ConversationHistory from '../components/ConversationHistory'
 import { checkFriction, logFrictionAction } from '../services/frictionAPI'
 import { trackFunnelStep } from '../services/analyticsAPI'
 import { logChatApiCall, logGuestApiCall, getClientIp } from '../services/apiLogging'
@@ -50,6 +51,7 @@ export default function Experience() {
   const [suggestedPrompts, setSuggestedPrompts] = useState([])
   const [loadingPrompts, setLoadingPrompts] = useState(true)
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [loadingConversations, setLoadingConversations] = useState(false)
   const messagesEndRef = useRef(null)
 
   const models = [
@@ -371,53 +373,17 @@ export default function Experience() {
         </div>
 
         {/* Chat History */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {chatHistory.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">
-              <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No conversations yet</p>
-            </div>
-          ) : (
-            <>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3 px-2">Today</p>
-                {chatHistory.slice(0, 3).map(chat => (
-                  <div
-                    key={chat.id}
-                    onClick={() => setCurrentChat(chat)}
-                    className={`p-3 rounded-lg cursor-pointer transition-all duration-200 group ${
-                      currentChat?.id === chat.id
-                        ? 'bg-primary/20 border border-primary/50'
-                        : 'hover:bg-muted'
-                    }`}
-                  >
-                    <p className="text-sm font-medium truncate text-foreground">{chat.title}</p>
-                    <p className="text-xs text-muted-foreground">12 messages</p>
-                  </div>
-                ))}
-              </div>
-
-              {chatHistory.length > 3 && (
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3 px-2">Earlier</p>
-                  {chatHistory.slice(3).map(chat => (
-                    <div
-                      key={chat.id}
-                      onClick={() => setCurrentChat(chat)}
-                      className={`p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                        currentChat?.id === chat.id
-                          ? 'bg-primary/20 border border-primary/50'
-                          : 'hover:bg-muted'
-                      }`}
-                    >
-                      <p className="text-sm font-medium truncate text-foreground">{chat.title}</p>
-                      <p className="text-xs text-muted-foreground">8 messages</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+        <div className="flex-1 overflow-y-auto p-4">
+          <ConversationHistory
+            conversations={chatHistory}
+            currentChatId={currentChat?.id}
+            onSelectConversation={(id) => {
+              const conversation = chatHistory.find(c => c.id === id)
+              if (conversation) setCurrentChat(conversation)
+            }}
+            onDeleteConversation={handleDeleteChat}
+            isLoading={loadingConversations}
+          />
         </div>
 
         {/* User Profile / Auth Section */}
