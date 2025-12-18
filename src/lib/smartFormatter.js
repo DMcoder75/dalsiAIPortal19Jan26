@@ -101,25 +101,31 @@ function isHeaderLike(text) {
 
 /**
  * Detect if text contains a numbered list
+ * Only matches numbers at the start of a line (not in middle of text like "CO2.")
  */
 function hasNumberedList(text) {
-  return /\d+\.\s+/g.test(text)
+  const lines = text.split('\n')
+  return lines.some(line => /^\d{1,2}\.\s+/.test(line.trim()))
 }
 
 /**
  * Extract numbered list items from text
+ * Only extracts items that start at the beginning of a line
  */
 function extractListItems(text) {
-  const listPattern = /(\d+)\.\s+([^\n]*?)(?=\d+\.|$)/gs
+  const lines = text.split('\n')
   const items = []
-  let match
   
-  while ((match = listPattern.exec(text)) !== null) {
-    items.push({
-      number: match[1],
-      content: match[2].trim()
-    })
-  }
+  lines.forEach(line => {
+    const trimmedLine = line.trim()
+    const match = trimmedLine.match(/^(\d{1,2})\.\s+(.+)$/)
+    if (match) {
+      items.push({
+        number: match[1],
+        content: match[2].trim()
+      })
+    }
+  })
   
   return items
 }
@@ -186,10 +192,10 @@ export function smartFormatText(text) {
   if (hasLists) {
     const listItems = extractListItems(text)
     
-    // Get text before first list item
-    const firstItemMatch = text.match(/\d+\.\s+/)
-    if (firstItemMatch && listItems.length > 0) {
-      const beforeList = text.substring(0, firstItemMatch.index).trim()
+    if (listItems.length > 0) {
+      // Find where the list starts
+      const firstListItemIndex = text.indexOf(`${listItems[0].number}.`)
+      const beforeList = text.substring(0, firstListItemIndex).trim()
       
       // Add header and paragraphs before list
       if (beforeList) {
