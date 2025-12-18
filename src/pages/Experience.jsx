@@ -34,6 +34,14 @@ import * as dalsiAPI from '../lib/dalsiAPI'
 import { cleanTextForDB } from '../lib/textCleaner'
 import { getUserApiKey } from '../lib/apiKeyManager'
 import { getGuestUserId } from '../lib/guestUser'
+import {
+  getUserConversations,
+  getConversationMessages,
+  createConversation,
+  deleteConversation,
+  saveMessage,
+  generateConversationTitle
+} from '../lib/conversationService'
 
 export default function Experience() {
   const { user, logout } = useAuth()
@@ -139,18 +147,21 @@ export default function Experience() {
   const loadChatHistory = async () => {
     try {
       if (user) {
-        const { data, error } = await supabase
-          .from('chats')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(20)
-
-        if (error) throw error
-        setChatHistory(data || [])
+        setLoadingConversations(true)
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+          logger.warn('No session found for loading conversations')
+          return
+        }
+        const conversations = await getUserConversations(user.id, session.access_token)
+        logger.info('Loaded conversations:', conversations.length)
+        setChatHistory(conversations || [])
       }
     } catch (error) {
       logger.error('Error loading chat history:', error)
+      setChatHistory([])
+    } finally {
+      setLoadingConversations(false)
     }
   }
 
@@ -165,20 +176,14 @@ export default function Experience() {
   const handleNewChat = async () => {
     try {
       if (user) {
-        const { data, error } = await supabase
-          .from('chats')
-          .insert([{
-            user_id: user.id,
-            title: 'New Conversation',
-            model: selectedModel,
-            created_at: new Date().toISOString()
-          }])
-          .select()
-
-        if (error) throw error
-        setCurrentChat(data[0])
-        setMessages([])
-        await loadChatHistory()
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return
+        const newConversation = await createConversation(user.id, session.access_token, 'New Conversation')
+        if (newConversation) {
+          setCurrentChat(newConversation)
+          setMessages([])
+          await loadChatHistory()
+        }
       } else {
         setCurrentChat({ id: `guest-${Date.now()}`, title: 'New Conversation' })
         setMessages([])
@@ -335,7 +340,9 @@ export default function Experience() {
   const handleDeleteChat = async (chatId) => {
     if (!user) return
     try {
-      await supabase.from('chats').delete().eq('id', chatId)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      await deleteConversation(chatId, session.access_token)
       await loadChatHistory()
       if (currentChat?.id === chatId) {
         setCurrentChat(null)
