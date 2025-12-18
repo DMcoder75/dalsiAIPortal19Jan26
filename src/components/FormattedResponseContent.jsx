@@ -20,18 +20,18 @@ const renderFormattedText = (paragraph) => {
 
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
-        <strong key={idx} className="font-bold text-slate-100">
+        <strong key={idx} className="font-bold text-white">
           {part.slice(2, -2)}
         </strong>
       )
     } else if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
       return (
-        <em key={idx} className="italic text-slate-200">
+        <em key={idx} className="italic text-white">
           {part.slice(1, -1)}
         </em>
       )
     } else {
-      return <span key={idx}>{part}</span>
+      return <span key={idx} className="text-white">{part}</span>
     }
   })
 }
@@ -40,20 +40,20 @@ const renderFormattedText = (paragraph) => {
  * Parse response text and render as formatted React components
  */
 export const FormattedResponseContent = ({ text }) => {
-  if (!text || typeof text !== 'string') return <p className="text-sm text-slate-300">{text}</p>
+  if (!text || typeof text !== 'string') return <p className="text-sm text-white">{text}</p>
 
   // Apply smart formatting
   const formattedItems = smartFormatText(text)
 
   return (
-    <div className="space-y-6 text-slate-200">
+    <div className="space-y-6 text-white">
       {formattedItems.map((item, idx) => {
         // Handle regular paragraphs
         if (item.type === 'paragraph') {
           return (
             <p
               key={idx}
-              className="text-sm text-slate-300 leading-relaxed"
+              className="text-sm text-white leading-relaxed"
               style={{
                 textAlign: 'justify',
                 textAlignLast: 'left',
@@ -73,7 +73,7 @@ export const FormattedResponseContent = ({ text }) => {
           return (
             <div key={idx} className="space-y-3">
               {/* Section Header */}
-              <h2 className="text-xl font-semibold text-purple-300 mt-6 mb-4 border-b border-purple-500/30 pb-2">
+              <h2 className="text-xl font-semibold text-white mt-6 mb-4 border-b border-purple-500/30 pb-2">
                 {item.header}
               </h2>
 
@@ -83,7 +83,7 @@ export const FormattedResponseContent = ({ text }) => {
                   item.content.map((para, paraIdx) => (
                     <p
                       key={paraIdx}
-                      className="text-sm text-slate-300 leading-relaxed"
+                      className="text-sm text-white leading-relaxed"
                       style={{
                         textAlign: 'justify',
                         textAlignLast: 'left',
@@ -98,7 +98,7 @@ export const FormattedResponseContent = ({ text }) => {
                   ))
                 ) : (
                   <p
-                    className="text-sm text-slate-300 leading-relaxed"
+                    className="text-sm text-white leading-relaxed"
                     style={{
                       textAlign: 'justify',
                       textAlignLast: 'left',
