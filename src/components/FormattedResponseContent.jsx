@@ -68,7 +68,9 @@ export const FormattedResponseContent = ({ text }) => {
                   wordSpacing: '0.05em',
                   letterSpacing: '0.3px',
                   lineHeight: '1.8',
-                  hyphens: 'auto'
+                  hyphens: 'none',
+                  overflowWrap: 'break-word',
+                  wordBreak: 'break-word'
                 }}>
                   <span className="font-semibold text-white">{listItem.number}.</span> {renderFormattedText(listItem.content)}
                 </li>
@@ -89,7 +91,9 @@ export const FormattedResponseContent = ({ text }) => {
                 wordSpacing: '0.05em',
                 letterSpacing: '0.3px',
                 lineHeight: '1.8',
-                hyphens: 'auto'
+                hyphens: 'none',
+                overflowWrap: 'break-word',
+                wordBreak: 'break-word'
               }}
             >
               {renderFormattedText(item.content)}
@@ -119,7 +123,9 @@ export const FormattedResponseContent = ({ text }) => {
                         wordSpacing: '0.05em',
                         letterSpacing: '0.3px',
                         lineHeight: '1.8',
-                        hyphens: 'auto'
+                        hyphens: 'none',
+                        overflowWrap: 'break-word',
+                        wordBreak: 'break-word'
                       }}
                     >
                       {renderFormattedText(para)}
@@ -134,7 +140,9 @@ export const FormattedResponseContent = ({ text }) => {
                       wordSpacing: '0.05em',
                       letterSpacing: '0.3px',
                       lineHeight: '1.8',
-                      hyphens: 'auto'
+                      hyphens: 'none',
+                      overflowWrap: 'break-word',
+                      wordBreak: 'break-word'
                     }}
                   >
                     {renderFormattedText(item.content)}
