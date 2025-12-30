@@ -43,6 +43,8 @@ import {
   generateConversationTitle
 } from '../lib/conversationService'
 import ImplementationSummaryResponse from '../components/ImplementationSummaryResponse'
+import { callAIWithIntelligentContinuation, getChatIdForConversation, clearConversationChatId } from '../lib/intelligentApiCaller'
+import { saveMessageWithMetadata } from '../lib/chatManagementService'
 
 export default function Experience() {
   const { user, logout } = useAuth()
@@ -270,18 +272,52 @@ export default function Experience() {
         sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       }
 
-      // Use new AI generation service with auto-detection
+      // Use intelligent API caller with continuation detection
       let response
+      let fullApiResponse = null
+      
       try {
-        const shouldAutoDetect = !conversationEndpoint
+        const serviceTypeMap = {
+          'general': 'general',
+          'education': 'edu',
+          'healthcare': 'healthcare',
+          'weather': 'weathersense',
+          'code': 'general'
+        }
+        const serviceType = serviceTypeMap[selectedModel] || 'general'
         
-        response = await smartGenerate(inputValue, {
-          mode: 'chat',
-          use_history: true,
-          session_id: sessionId,
-          autoDetect: shouldAutoDetect,
-          forceEndpoint: conversationEndpoint
-        })
+        let streamedContent = ''
+        const onToken = (token) => {
+          streamedContent += token
+        }
+        
+        const onComplete = (content, sources, fullResponse) => {
+          response = fullResponse
+          fullApiResponse = fullResponse
+        }
+        
+        const onError = (error) => {
+          logger.error('❌ [EXPERIENCE] API error:', error)
+          throw error
+        }
+        
+        await callAIWithIntelligentContinuation(
+          inputValue,
+          currentChat?.id || sessionId,
+          selectedModel,
+          serviceType,
+          onToken,
+          onComplete,
+          onError,
+          {
+            maxLength: 2048,
+            gradeLevel: selectedModel === 'education' ? 'general' : null
+          }
+        )
+        
+        if (!response) {
+          response = { data: { response: streamedContent } }
+        }
       } catch (apiError) {
         logger.error('❌ [EXPERIENCE] API error:', apiError)
         throw apiError
