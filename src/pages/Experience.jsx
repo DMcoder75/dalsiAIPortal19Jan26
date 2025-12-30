@@ -96,6 +96,19 @@ export default function Experience() {
         const authStatus = await getAuthStatus()
         logger.info('🔐 [EXPERIENCE] Auth status:', authStatus.authType)
         
+        // CRITICAL: Get API key and set it in dalsiAPI
+        try {
+          const apiKey = await getApiKeyForRequest()
+          if (apiKey) {
+            dalsiAPI.setApiKey(apiKey)
+            logger.info('✅ [EXPERIENCE] API key set for requests')
+          } else {
+            logger.warn('⚠️ [EXPERIENCE] No API key available')
+          }
+        } catch (keyError) {
+          logger.error('❌ [EXPERIENCE] Error getting API key:', keyError)
+        }
+        
         // Update rate limit tracker based on user tier
         if (authStatus.isAuthenticated && authStatus.user) {
           const tier = authStatus.user.subscription_tier || 'free'
