@@ -128,7 +128,7 @@ export const ChatModeResponse = ({ response, references, followups, onFollowupCl
                 <div className="relative px-4 py-3 flex items-start gap-3">
                   <div className="flex-shrink-0 mt-1">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center group-hover:from-purple-500/40 group-hover:to-pink-500/40 transition-all duration-300">
-                      <span className="text-purple-300 group-hover:text-purple-200 transition-colors font-bold">?</span>
+                      <span className="text-purple-300 group-hover:text-purple-200 transition-colors">→</span>
                     </div>
                   </div>
                   
