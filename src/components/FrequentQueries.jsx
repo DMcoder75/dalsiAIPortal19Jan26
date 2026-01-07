@@ -6,14 +6,17 @@
 
 import React, { useState, useEffect } from 'react'
 import { Sparkles, Loader } from 'lucide-react'
-import { logger } from '../lib/logger'
+import logger from '../lib/logger'
 
 export const FrequentQueries = ({ onQuerySelect }) => {
+  console.log('📊 [FREQUENT_QUERIES] Component mounted!')
+  
   const [queries, setQueries] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    console.log('📊 [FREQUENT_QUERIES] useEffect called')
     fetchFrequentQueries()
   }, [])
 
