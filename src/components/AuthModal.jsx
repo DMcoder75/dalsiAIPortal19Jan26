@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { subscriptionManager } from '../lib/subscriptionManager'
 import { updateTrackerTier } from '../lib/rateLimitService'
 import { migrateGuestConversations } from '../lib/guestMigrationService'
+import { checkUserExists, checkUserExistsByGoogleId } from '../lib/userExistenceService'
 import GoogleDataDisclosure from './GoogleDataDisclosure'
 import GoogleProfileSetup from './GoogleProfileSetup'
 import logo from '../assets/DalSiAILogo2.png'
@@ -31,6 +32,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
   const [showGoogleProfileSetup, setShowGoogleProfileSetup] = useState(false)
   const [googleData, setGoogleData] = useState(null)
   const [isProcessingGoogle, setIsProcessingGoogle] = useState(false)
+  const [isNewGoogleUser, setIsNewGoogleUser] = useState(null)
 
   if (!isOpen) return null
 
@@ -238,7 +240,19 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
 
   const handleGmailSignup = async () => {
     console.log('📧 [AUTH_MODAL] handleGmailSignup started')
-    setShowGoogleDisclosure(true)
+    setIsProcessingGoogle(true)
+    setError('')
+    
+    try {
+      // For signup, we don't have email yet, so we go directly to Gmail
+      // The backend will check if user exists and handle accordingly
+      setIsNewGoogleUser(true) // Assume new user for signup flow
+      setShowGoogleDisclosure(true)
+    } catch (error) {
+      console.error('❌ [AUTH_MODAL] Error in Gmail signup:', error)
+      setError('Failed to initiate Gmail signup')
+      setIsProcessingGoogle(false)
+    }
   }
 
   const handleGoogleDisclosureContinue = async () => {
@@ -256,7 +270,20 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
 
   const handleGmailLogin = async () => {
     console.log('📧 [AUTH_MODAL] handleGmailLogin started')
-    setShowGoogleDisclosure(true)
+    setIsProcessingGoogle(true)
+    setError('')
+    
+    try {
+      // For login, we don't have email yet, so we go directly to Gmail
+      // The backend will check if user exists and handle accordingly
+      setIsNewGoogleUser(false) // Assume existing user for login flow
+      setShowGoogleDisclosure(false) // Skip disclosure for login
+      await loginWithGmail()
+    } catch (error) {
+      console.error('❌ [AUTH_MODAL] Error in Gmail login:', error)
+      setError('Failed to initiate Gmail login')
+      setIsProcessingGoogle(false)
+    }
   }
 
   const handleGoogleLoginContinue = async () => {
@@ -445,13 +472,18 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
         </CardContent>
       </Card>
 
-      {/* Google Data Disclosure Modal */}
-      <GoogleDataDisclosure
-        isOpen={showGoogleDisclosure}
-        onClose={() => setShowGoogleDisclosure(false)}
-        onContinue={isLogin ? handleGoogleLoginContinue : handleGoogleDisclosureContinue}
-        isLoading={isProcessingGoogle}
-      />
+      {/* Google Data Disclosure Modal - Only for new users */}
+      {isNewGoogleUser && (
+        <GoogleDataDisclosure
+          isOpen={showGoogleDisclosure}
+          onClose={() => {
+            setShowGoogleDisclosure(false)
+            setIsProcessingGoogle(false)
+          }}
+          onContinue={handleGoogleDisclosureContinue}
+          isLoading={isProcessingGoogle}
+        />
+      )}
 
       {/* Google Profile Setup Modal */}
       <GoogleProfileSetup
