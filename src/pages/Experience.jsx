@@ -51,6 +51,10 @@ import EmailWriterModal from '../components/EmailWriterModal'
 import SummaryModal from '../components/SummaryModal'
 import TranslatorModal from '../components/TranslatorModal'
 import TutorModal from '../components/TutorModal'
+import EditConversationModal from '../components/EditConversationModal'
+import { updateConversationTitle, generateConversationTitle as generateTitle } from '../lib/conversationServiceEnhanced'
+import { generateTitleFromMessage } from '../lib/guestConversationService'
+import { deleteConversationWithCascade } from '../lib/deleteConversationService'
 
 export default function Experience() {
   const { user, logout } = useAuth()
@@ -77,6 +81,9 @@ export default function Experience() {
   const [showSummaryModal, setShowSummaryModal] = useState(false)
   const [showTranslatorModal, setShowTranslatorModal] = useState(false)
   const [showTutorModal, setShowTutorModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingConversation, setEditingConversation] = useState(null)
+  const [isUpdatingTitle, setIsUpdatingTitle] = useState(false)
 
   const models = [
     { id: 'general', name: 'DalSiAI Chat', description: 'General AI Assistant' },
@@ -292,8 +299,27 @@ export default function Experience() {
 
       logger.info('🚀 [EXPERIENCE] Sending message with model:', selectedModel)
 
+      // Auto-create conversation with title from first message if needed
+      let activeChat = currentChat
+      if (!activeChat) {
+        const generatedTitle = generateTitle(inputValue)
+        if (user) {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session) {
+            activeChat = await createConversation(user.id, session.access_token, generatedTitle)
+            if (activeChat) {
+              setCurrentChat(activeChat)
+              await loadChatHistory()
+            }
+          }
+        } else {
+          activeChat = { id: `guest-${Date.now()}`, title: generatedTitle }
+          setCurrentChat(activeChat)
+        }
+      }
+
       // Ensure we have a persistent session ID for this conversation
-      let sessionId = currentSessionId || currentChat?.id
+      let sessionId = currentSessionId || activeChat?.id
       if (!sessionId) {
         sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
         setCurrentSessionId(sessionId)
@@ -411,15 +437,15 @@ export default function Experience() {
       }
 
       // Save to database if user is logged in
-      if (user && currentChat) {
+      if (user && activeChat) {
         await supabase.from('messages').insert([
           {
-            chat_id: currentChat.id,
+            chat_id: activeChat.id,
             role: 'user',
             content: cleanTextForDB(inputValue)
           },
           {
-            chat_id: currentChat.id,
+            chat_id: activeChat.id,
             role: 'assistant',
             content: cleanTextForDB(JSON.stringify(responseContent))
           }
@@ -444,14 +470,70 @@ export default function Experience() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
-      await deleteConversation(chatId, session.access_token)
-      await loadChatHistory()
-      if (currentChat?.id === chatId) {
-        setCurrentChat(null)
-        setMessages([])
+      const result = await deleteConversationWithCascade(chatId, session.access_token)
+      if (result.success) {
+        await loadChatHistory()
+        if (currentChat?.id === chatId) {
+          setCurrentChat(null)
+          setMessages([])
+        }
       }
     } catch (error) {
       logger.error('Error deleting chat:', error)
+    }
+  }
+
+  const handleEditConversation = (conversation) => {
+    setEditingConversation(conversation)
+    setShowEditModal(true)
+  }
+
+  const handleSaveConversationTitle = async (conversationId, newTitle) => {
+    if (!user) return
+    try {
+      setIsUpdatingTitle(true)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      await updateConversationTitle(conversationId, session.access_token, newTitle)
+      await loadChatHistory()
+      if (currentChat?.id === conversationId) {
+        setCurrentChat(prev => ({ ...prev, title: newTitle }))
+      }
+      setShowEditModal(false)
+      setEditingConversation(null)
+    } catch (error) {
+      logger.error('Error updating conversation title:', error)
+    } finally {
+      setIsUpdatingTitle(false)
+    }
+  }
+
+  const handleSelectConversation = async (id) => {
+    const conversation = chatHistory.find(c => c.id === id)
+    if (conversation) {
+      setCurrentChat(conversation)
+      setMessages([])
+      setLoading(true)
+      try {
+        if (user) {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session) {
+            const conversationMessages = await getConversationMessages(id, session.access_token)
+            const formattedMessages = conversationMessages.map(msg => ({
+              id: msg.id,
+              role: msg.role,
+              content: msg.content,
+              timestamp: new Date(msg.created_at)
+            }))
+            setMessages(formattedMessages)
+            logger.info('Loaded conversation messages:', formattedMessages.length)
+          }
+        }
+      } catch (error) {
+        logger.error('Error loading conversation messages:', error)
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
@@ -486,11 +568,9 @@ export default function Experience() {
           <ConversationHistory
             conversations={chatHistory}
             currentChatId={currentChat?.id}
-            onSelectConversation={(id) => {
-              const conversation = chatHistory.find(c => c.id === id)
-              if (conversation) setCurrentChat(conversation)
-            }}
+            onSelectConversation={handleSelectConversation}
             onDeleteConversation={handleDeleteChat}
+            onEditConversation={handleEditConversation}
             isLoading={loadingConversations}
           />
         </div>
@@ -861,6 +941,18 @@ export default function Experience() {
         isOpen={showTutorModal}
         onClose={() => setShowTutorModal(false)}
         user={user}
+      />
+
+      {/* Edit Conversation Modal */}
+      <EditConversationModal
+        isOpen={showEditModal}
+        conversation={editingConversation}
+        onClose={() => {
+          setShowEditModal(false)
+          setEditingConversation(null)
+        }}
+        onSave={handleSaveConversationTitle}
+        isLoading={isUpdatingTitle}
       />
     </div>
   )

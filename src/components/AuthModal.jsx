@@ -8,6 +8,9 @@ import { loginWithJWT, signupWithGmail, loginWithGmail } from '../lib/jwtAuth'
 import { useAuth } from '../contexts/AuthContext'
 import { subscriptionManager } from '../lib/subscriptionManager'
 import { updateTrackerTier } from '../lib/rateLimitService'
+import { migrateGuestConversations } from '../lib/guestMigrationService'
+import GoogleDataDisclosure from './GoogleDataDisclosure'
+import GoogleProfileSetup from './GoogleProfileSetup'
 import logo from '../assets/DalSiAILogo2.png'
 
 export default function AuthModal({ isOpen, onClose, onSuccess }) {
@@ -24,6 +27,10 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
   })
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [showGoogleDisclosure, setShowGoogleDisclosure] = useState(false)
+  const [showGoogleProfileSetup, setShowGoogleProfileSetup] = useState(false)
+  const [googleData, setGoogleData] = useState(null)
+  const [isProcessingGoogle, setIsProcessingGoogle] = useState(false)
 
   if (!isOpen) return null
 
@@ -179,6 +186,17 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
         // Don't fail signup if rate limit init fails
       }
 
+      // Migrate guest conversations
+      console.log('🔄 [AUTH_MODAL] Starting guest conversation migration...')
+      try {
+        const migrationResult = await migrateGuestConversations(data.user.id, data.token)
+        if (migrationResult.success && migrationResult.migratedCount > 0) {
+          console.log('✅ [AUTH_MODAL] Migrated conversations:', migrationResult.migratedCount)
+        }
+      } catch (migrationError) {
+        console.error('⚠️ [AUTH_MODAL] Error migrating guest conversations:', migrationError)
+      }
+
       // Show migration message if applicable
       let successMsg = 'Account created successfully! Check your email to verify your account.'
       if (data.migration && data.migration.conversations_migrated > 0) {
@@ -220,33 +238,37 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
 
   const handleGmailSignup = async () => {
     console.log('📧 [AUTH_MODAL] handleGmailSignup started')
-    setIsLoading(true)
-    setError('')
+    setShowGoogleDisclosure(true)
+  }
 
+  const handleGoogleDisclosureContinue = async () => {
+    console.log('🔐 [AUTH_MODAL] User accepted disclosure, redirecting to Gmail...')
+    setIsProcessingGoogle(true)
     try {
-      console.log('🔐 [AUTH_MODAL] Attempting Gmail signup...')
       await signupWithGmail()
-      // signupWithGmail redirects to Gmail, so this won't return
     } catch (error) {
       console.error('❌ [AUTH_MODAL] GMAIL SIGNUP ERROR:', error)
       setError(error.message || 'Gmail signup failed. Please try again.')
-      setIsLoading(false)
+      setShowGoogleDisclosure(false)
+      setIsProcessingGoogle(false)
     }
   }
 
   const handleGmailLogin = async () => {
     console.log('📧 [AUTH_MODAL] handleGmailLogin started')
-    setIsLoading(true)
-    setError('')
+    setShowGoogleDisclosure(true)
+  }
 
+  const handleGoogleLoginContinue = async () => {
+    console.log('🔐 [AUTH_MODAL] User accepted disclosure, redirecting to Gmail...')
+    setIsProcessingGoogle(true)
     try {
-      console.log('🔐 [AUTH_MODAL] Attempting Gmail login...')
       await loginWithGmail()
-      // loginWithGmail redirects to Gmail, so this won't return
     } catch (error) {
       console.error('❌ [AUTH_MODAL] GMAIL LOGIN ERROR:', error)
       setError(error.message || 'Gmail login failed. Please try again.')
-      setIsLoading(false)
+      setShowGoogleDisclosure(false)
+      setIsProcessingGoogle(false)
     }
   }
 
@@ -422,6 +444,23 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
           </form>
         </CardContent>
       </Card>
+
+      {/* Google Data Disclosure Modal */}
+      <GoogleDataDisclosure
+        isOpen={showGoogleDisclosure}
+        onClose={() => setShowGoogleDisclosure(false)}
+        onContinue={isLogin ? handleGoogleLoginContinue : handleGoogleDisclosureContinue}
+        isLoading={isProcessingGoogle}
+      />
+
+      {/* Google Profile Setup Modal */}
+      <GoogleProfileSetup
+        isOpen={showGoogleProfileSetup}
+        googleData={googleData}
+        onClose={() => setShowGoogleProfileSetup(false)}
+        onSubmit={handleGoogleProfileSubmit}
+        isLoading={isProcessingGoogle}
+      />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Trash2, Copy, ChevronDown, Plus } from 'lucide-react'
+import { Copy } from 'lucide-react'
 import { Button } from './ui/button'
+import ConversationMenu from './ConversationMenu'
 
 /**
  * ConversationHistory Component
@@ -11,6 +12,7 @@ export default function ConversationHistory({
   currentChatId = null,
   onSelectConversation,
   onDeleteConversation,
+  onEditConversation,
   onNewConversation,
   isLoading = false
 }) {
@@ -117,18 +119,12 @@ export default function ConversationHistory({
                       >
                         <Copy className="h-3 w-3" />
                       </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (confirm('Delete this conversation?')) {
-                            onDeleteConversation(conv.id)
-                          }
-                        }}
-                        className="p-1 hover:bg-red-500/10 hover:text-red-600 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Delete conversation"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
+                      <ConversationMenu
+                        conversation={conv}
+                        onEdit={onEditConversation}
+                        onDelete={onDeleteConversation}
+                        isLoading={isLoading}
+                      />
                     </div>
                   )}
                 </div>
