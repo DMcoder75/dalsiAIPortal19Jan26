@@ -12,8 +12,7 @@ import { migrateGuestConversations } from '../lib/guestMigrationService'
 import { migrateGuestDataToRegistered, clearGuestSessionAfterMigration } from '../lib/guestToRegisteredMigration'
 import { checkUserExists, checkUserExistsByGoogleId } from '../lib/userExistenceService'
 import { getGuestUserId } from '../lib/guestUser'
-import GoogleDataDisclosure from './GoogleDataDisclosure'
-import GoogleProfileSetup from './GoogleProfileSetup'
+// Google OAuth handled natively - no custom modals needed
 import logo from '../assets/DalSiAILogo2.png'
 
 export default function AuthModal({ isOpen, onClose, onSuccess }) {
@@ -30,11 +29,6 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
   })
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
-  const [showGoogleDisclosure, setShowGoogleDisclosure] = useState(false)
-  const [showGoogleProfileSetup, setShowGoogleProfileSetup] = useState(false)
-  const [googleData, setGoogleData] = useState(null)
-  const [isProcessingGoogle, setIsProcessingGoogle] = useState(false)
-  const [isNewGoogleUser, setIsNewGoogleUser] = useState(null)
 
   if (!isOpen) return null
 
@@ -198,52 +192,39 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
   }
 
   const handleGmailSignup = async () => {
-    console.log('🔐 [AUTH_MODAL] handleGmailSignup called')
-    setIsNewGoogleUser(true)
-    setShowGoogleDisclosure(true)
+    console.log('🔐 [AUTH_MODAL] handleGmailSignup called - redirecting to Google OAuth')
+    try {
+      setIsLoading(true)
+      await signupWithGmail()
+    } catch (error) {
+      console.error('❌ [AUTH_MODAL] Gmail signup error:', error)
+      setError(error.message || 'Gmail signup failed')
+      setIsLoading(false)
+    }
   }
 
   const handleGmailLogin = async () => {
-    console.log('🔐 [AUTH_MODAL] handleGmailLogin called')
-    setIsNewGoogleUser(false)
-    setShowGoogleDisclosure(true)
+    console.log('🔐 [AUTH_MODAL] handleGmailLogin called - redirecting to Google OAuth')
+    try {
+      setIsLoading(true)
+      await loginWithGmail()
+    } catch (error) {
+      console.error('❌ [AUTH_MODAL] Gmail login error:', error)
+      setError(error.message || 'Gmail login failed')
+      setIsLoading(false)
+    }
   }
 
   const handleGoogleDisclosureContinue = async () => {
-    console.log('🔐 [AUTH_MODAL] handleGoogleDisclosureContinue called')
-    setIsProcessingGoogle(true)
-    try {
-      if (isNewGoogleUser) {
-        console.log('🔐 [AUTH_MODAL] Calling signupWithGmail for new user')
-        await signupWithGmail()
-      } else {
-        console.log('🔐 [AUTH_MODAL] Calling loginWithGmail for existing user')
-        await loginWithGmail()
-      }
-    } catch (error) {
-      console.error('❌ [AUTH_MODAL] Google auth error:', error)
-      setError(error.message || 'Google authentication failed')
-      setShowGoogleDisclosure(false)
-      setIsProcessingGoogle(false)
-    }
+    // No longer needed - Google handles disclosure
   }
 
   const handleGoogleLoginContinue = async () => {
-    console.log('🔐 [AUTH_MODAL] handleGoogleLoginContinue called')
-    setIsProcessingGoogle(true)
-    try {
-      await loginWithGmail()
-    } catch (error) {
-      console.error('❌ [AUTH_MODAL] Google login error:', error)
-      setError(error.message || 'Google login failed')
-      setShowGoogleDisclosure(false)
-      setIsProcessingGoogle(false)
-    }
+    // No longer needed - Google handles disclosure
   }
 
   const handleGoogleProfileSubmit = async (profileData) => {
-    console.log('🔐 [AUTH_MODAL] handleGoogleProfileSubmit called with:', profileData)
-    // This will be implemented when profile setup is needed
+    // No longer needed - Google provides profile data
   }
 
   return (
@@ -419,25 +400,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
         </CardContent>
       </Card>
 
-      {/* Google Data Disclosure Modal - For both login and signup */}
-      <GoogleDataDisclosure
-        isOpen={showGoogleDisclosure}
-        onClose={() => {
-          setShowGoogleDisclosure(false)
-          setIsProcessingGoogle(false)
-        }}
-        onContinue={isNewGoogleUser ? handleGoogleDisclosureContinue : handleGoogleLoginContinue}
-        isLoading={isProcessingGoogle}
-      />
-
-      {/* Google Profile Setup Modal */}
-      <GoogleProfileSetup
-        isOpen={showGoogleProfileSetup}
-        googleData={googleData}
-        onClose={() => setShowGoogleProfileSetup(false)}
-        onSubmit={handleGoogleProfileSubmit}
-        isLoading={isProcessingGoogle}
-      />
+      {/* Google OAuth handled natively by Google - no custom modals needed */}
     </div>
   )
 }
