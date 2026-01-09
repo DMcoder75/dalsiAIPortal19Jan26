@@ -975,18 +975,22 @@ const EnhancedChatInterface = () => {
  }
 
  const initializeGuestUser = async () => {
-  let sessionId = localStorage.getItem('guest_session_id')
+  // Get the session ID from authService (the one sent to backend)
+  let sessionId = sessionStorage.getItem('dalsi_guest_user_id')
+  
   if (!sessionId) {
-  sessionId = `guest_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`
-  localStorage.setItem('guest_session_id', sessionId)
-  console.log('✨ New guest session created:', sessionId)
+    // Fallback: generate one matching authService format
+    sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`
+    sessionStorage.setItem('dalsi_guest_user_id', sessionId)
+    console.log('✨ New guest session created:', sessionId)
   }
+  
+  // Store in localStorage for OAuth callback (use same ID as backend)
+  localStorage.setItem('guest_session_id', sessionId)
   setGuestUserId(sessionId)
   
-  // Guest users don't need a separate guest_users table entry
-  // They use the guest_conversations table for message storage
-  // and will be logged with user_id from the guest user in the users table
   console.log('✅ Guest user session initialized:', sessionId)
+  console.log('🔍 DEBUG: Using guest_session_id for OAuth:', sessionId)
  }
 
  const saveGuestMessageToDB = async (message) => {
