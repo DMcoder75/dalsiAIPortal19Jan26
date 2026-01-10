@@ -489,6 +489,13 @@ export const handleGmailCallback = async (code, state) => {
     const guestUserId = localStorage.getItem('guest_session_id');
     console.log('📝 Guest Session ID:', guestUserId ? 'present' : 'not present');
     console.log('🔍 DEBUG: Actual guest_session_id value:', guestUserId);
+    
+    // Store in localStorage for persistent logging
+    const callbackLog = {
+      timestamp: new Date().toISOString(),
+      guestSessionId: guestUserId
+    };
+    localStorage.setItem('gmail_callback_log', JSON.stringify(callbackLog));
 
     // Exchange authorization code for JWT token
     console.log('🔄 Exchanging code for JWT token...');
@@ -497,7 +504,8 @@ export const handleGmailCallback = async (code, state) => {
       state,
       guest_user_id: guestUserId
     };
-    console.log('📤 DEBUG: Request body being sent to backend:', requestBody);
+    console.log('📶 DEBUG: Request body being sent to backend:', requestBody);
+    localStorage.setItem('gmail_callback_request', JSON.stringify(requestBody));
     
     const response = await fetch(`${API_BASE_URL}/api/auth/gmail/callback`, {
       method: 'POST',
