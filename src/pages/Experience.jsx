@@ -215,28 +215,15 @@ export default function Experience() {
 
   const handleNewChat = async () => {
     try {
-      if (user) {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) return
-        const newConversation = await createConversation(user.id, session.access_token, 'New Conversation')
-        if (newConversation) {
-          setCurrentChat(newConversation)
-          setMessages([])
-          setInputValue('')
-          setConversationEndpoint(null)
-          setCurrentSessionId(null)
-          conversationChatIdsRef.current = {}
-          await loadChatHistory()
-        }
-      } else {
-        setCurrentChat(null)
-        setMessages([])
-        setInputValue('')
-        setLoading(false)
-        setConversationEndpoint(null)
-        setCurrentSessionId(null)
-        conversationChatIdsRef.current = {}
-      }
+      // For both logged-in and guest users, just clear everything and show welcome screen
+      // Don't create a conversation in DB yet - it will be created when user sends first message
+      setCurrentChat(null)
+      setMessages([])
+      setInputValue('')
+      setLoading(false)
+      setConversationEndpoint(null)
+      setCurrentSessionId(null)
+      conversationChatIdsRef.current = {}
       
       logger.info('📝 [EXPERIENCE] New conversation started - blank chat ready for input')
       trackFunnelStep('new_chat_created', { model: selectedModel })
