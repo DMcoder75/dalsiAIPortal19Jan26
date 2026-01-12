@@ -56,6 +56,7 @@ import { updateConversationTitle, generateConversationTitle as generateTitle } f
 import { generateTitleFromMessage } from '../lib/guestConversationService'
 import { deleteConversationWithCascade } from '../lib/deleteConversationService'
 import { fetchConversations, fetchConversationMessages, deleteConversationAPI, invalidateConversationsCache, invalidateMessagesCache } from '../lib/chatAPI'
+import { cleanStoredMessageContent } from '../lib/markdownCleaner'
 
 export default function Experience() {
   const { user, logout } = useAuth()
@@ -582,7 +583,7 @@ export default function Experience() {
             const formattedMessages = conversationMessages.map(msg => ({
               id: msg.id,
               sender: msg.sender,
-              content: msg.content,
+              content: cleanStoredMessageContent(msg.content),
               mode: msg.mode || 'chat',
               references: msg.references || [],
               followups: msg.metadata?.followup_questions || msg.followups || [],
