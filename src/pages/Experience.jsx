@@ -60,8 +60,11 @@ import { cleanStoredMessageContent } from '../lib/markdownCleaner'
 
 export default function Experience() {
   const { user, logout } = useAuth()
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
+  
+  // Initialize sidebar state based on screen size
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768) // Hidden on mobile, visible on desktop
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(window.innerWidth >= 1024) // Hidden on mobile/tablet, visible on desktop
   const [currentChat, setCurrentChat] = useState(null)
   const [messages, setMessages] = useState([])
   const [inputValue, setInputValue] = useState('')
@@ -106,6 +109,25 @@ export default function Experience() {
     { id: 'google-drive', name: 'Google Drive', connected: true, icon: '📁' },
     { id: 'slack', name: 'Slack', connected: false, icon: '💬' }
   ]
+
+  // Handle window resize for responsive sidebar
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      if (mobile) {
+        setSidebarOpen(false)
+        setRightSidebarOpen(false)
+      } else {
+        setSidebarOpen(true)
+        if (window.innerWidth >= 1024) {
+          setRightSidebarOpen(true)
+        }
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Load chat history, setup authentication, and initialize rate limits on mount
   useEffect(() => {
@@ -606,7 +628,7 @@ export default function Experience() {
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
       {/* Left Sidebar */}
-      <div className={`${sidebarOpen ? 'w-56 md:w-56' : 'w-0'} bg-card border-r border-border flex flex-col transition-all duration-300 overflow-hidden fixed md:static h-screen md:h-auto z-40 md:z-auto`}>
+      <div className={`${sidebarOpen ? 'w-56' : 'w-0'} bg-card border-r border-border flex flex-col transition-all duration-300 overflow-hidden fixed md:static h-screen md:h-auto z-40 md:z-auto`}>
         {/* Logo & Branding */}
         <div className="p-6 border-b border-border">
           <a href="/" className="flex items-center gap-3 mb-6 hover:opacity-80 transition-opacity cursor-pointer">
@@ -687,6 +709,14 @@ export default function Experience() {
           )}
         </div>
       </div>
+
+      {/* Mobile Overlay - Close sidebar when clicking outside */}
+      {sidebarOpen && isMobile && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
@@ -900,7 +930,7 @@ export default function Experience() {
       </div>
 
       {/* Right Sidebar */}
-      <div className={`${rightSidebarOpen ? 'w-64 md:w-64' : 'w-0'} bg-card border-l border-border flex flex-col transition-all duration-300 overflow-hidden hidden md:flex`}>
+      <div className={`${rightSidebarOpen ? 'w-64' : 'w-0'} bg-card border-l border-border flex flex-col transition-all duration-300 overflow-hidden hidden lg:flex`}>
         <div className="p-6 border-b border-border flex items-center justify-between">
           <h3 className="text-lg font-semibold text-foreground">Quick Actions</h3>
           <button
