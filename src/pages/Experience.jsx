@@ -332,7 +332,9 @@ export default function Experience() {
             }
           }
         } else {
-          activeChat = { id: `guest-${Date.now()}`, title: generatedTitle }
+          // For guest users: use the guest user ID from auth service
+          const guestUserId = getGuestUserId()
+          activeChat = { id: guestUserId || `guest-${Date.now()}`, title: generatedTitle }
           setCurrentChat(activeChat)
         }
       }
