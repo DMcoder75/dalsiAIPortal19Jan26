@@ -682,7 +682,18 @@ export default function Experience() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate text-foreground">{user.user_metadata?.first_name || user.email || 'User'}</p>
-                  <p className="text-xs text-muted-foreground">Pro Plan</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(() => {
+                      const tier = user.subscription_tier || 'free'
+                      const tierNames = {
+                        'free': 'Free Plan',
+                        'pro': 'Pro Plan',
+                        'premium': 'Premium Plan',
+                        'enterprise': 'Enterprise Plan'
+                      }
+                      return tierNames[tier] || `${tier.charAt(0).toUpperCase() + tier.slice(1)} Plan`
+                    })()}
+                  </p>
                 </div>
               </div>
               <button
