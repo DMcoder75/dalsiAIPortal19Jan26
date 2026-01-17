@@ -57,6 +57,7 @@ import { generateTitleFromMessage } from '../lib/guestConversationService'
 import { deleteConversationWithCascade } from '../lib/deleteConversationService'
 import { fetchConversations, fetchConversationMessages, deleteConversationAPI, invalidateConversationsCache, invalidateMessagesCache } from '../lib/chatAPI'
 import { cleanStoredMessageContent } from '../lib/markdownCleaner'
+import { cleanReferences } from '../lib/urlCleaner'
 
 export default function Experience() {
   const { user, logout } = useAuth()
@@ -450,7 +451,7 @@ export default function Experience() {
 
       if (response.data) {
         // Extract references from multiple possible locations
-        responseReferences = response.data.references || response.data.sources || response.data.links || []
+        responseReferences = cleanReferences(response.data.references || response.data.sources || response.data.links || [])
         
         // Extract followup questions from multiple possible locations
         responseFollowups = response.data.followup_questions || response.data.follow_up_questions || response.data.followups || []
