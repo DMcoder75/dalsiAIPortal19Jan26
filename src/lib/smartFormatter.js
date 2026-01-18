@@ -108,35 +108,32 @@ function parseMarkdownTable(text) {
     const line = lines[i].trim()
     const nextLine = lines[i + 1].trim()
     
-    if (line.startsWith('|') && nextLine.startsWith('|')) {
-      if (/^\|[\s\-|:]+\|$/.test(nextLine)) {
-        tableStartIdx = i
-        break
+    if (line.startsWith('|') && nextLine.startsWith('|') && /^\|[\s\-|:]+\|$/.test(nextLine)) {
+      tableStartIdx = i
+      tableEndIdx = i + 1
+      
+      for (let j = i + 2; j < lines.length; j++) {
+        if (lines[j].trim().startsWith('|')) {
+          tableEndIdx = j
+        } else {
+          break
+        }
       }
+      break
     }
   }
   
   if (tableStartIdx === -1) return null
   
-  tableEndIdx = tableStartIdx + 2
-  while (tableEndIdx < lines.length && lines[tableEndIdx].trim().startsWith('|')) {
-    tableEndIdx++
-  }
-  tableEndIdx--
-  
-  const tableLines = lines.slice(tableStartIdx, tableEndIdx + 1)
-  
-  const headerLine = tableLines[0].trim()
-  const headers = headerLine
-    .split('|')
-    .map(h => h.trim())
-    .filter(h => h.length > 0)
+  const headerLine = lines[tableStartIdx].trim()
+  const headers = headerLine.split('|').map(h => h.trim()).filter(h => h)
   
   const rows = []
-  for (let i = 2; i < tableLines.length; i++) {
-    const rowLine = tableLines[i].trim()
-    const cells = rowLine
-      .split('|')
+  for (let i = tableStartIdx + 2; i <= tableEndIdx; i++) {
+    const line = lines[i].trim()
+    if (!line.startsWith('|')) break
+    
+    const cells = line.split('|')
       .map(c => c.trim())
       .filter((c, idx) => idx > 0 && idx < headers.length + 1)
     
@@ -278,18 +275,19 @@ function hasMarkdownHeadings(text) {
 }
 
 /**
- * Extract Markdown headings with levels
+ * Extract Markdown headings with levels and line indices
  */
-function extractHeadings(text) {
+function extractHeadingsWithIndices(text) {
   const lines = text.split('\n')
   const headings = []
   
-  lines.forEach(line => {
+  lines.forEach((line, idx) => {
     const match = line.match(/^(#{1,6})\s+(.+)$/)
     if (match) {
       headings.push({
         level: match[1].length,
-        content: match[2].trim()
+        content: match[2].trim(),
+        lineIdx: idx
       })
     }
   })
@@ -349,6 +347,33 @@ function applyBoldFormatting(text) {
 }
 
 /**
+ * Restore code blocks and blockquotes from placeholders
+ */
+function restoreCodeBlocksAndQuotes(items, codeBlockMap, blockquoteMap) {
+  return items.map(item => {
+    if (item.type === 'paragraph' || item.type === 'heading') {
+      const codeBlockKey = Object.keys(codeBlockMap).find(key => item.content?.includes(key))
+      if (codeBlockKey) {
+        return {
+          type: 'code_block',
+          language: codeBlockMap[codeBlockKey].language,
+          code: codeBlockMap[codeBlockKey].code
+        }
+      }
+      
+      const quoteKey = Object.keys(blockquoteMap).find(key => item.content?.includes(key))
+      if (quoteKey) {
+        return {
+          type: 'blockquote',
+          content: blockquoteMap[quoteKey]
+        }
+      }
+    }
+    return item
+  })
+}
+
+/**
  * Main formatter function - processes all Markdown content types
  */
 export function smartFormatText(text) {
@@ -384,56 +409,106 @@ export function smartFormatText(text) {
   // This prevents numbered lists within sections from destroying content
   const hasHeadings = hasMarkdownHeadings(processText)
   if (hasHeadings) {
-    const headings = extractHeadings(processText)
+    const headingsWithIndices = extractHeadingsWithIndices(processText)
     const lines = processText.split('\n')
     
-    let lastHeadingIdx = -1
-    headings.forEach((heading, idx) => {
-      // Find the line that contains the heading with hash symbols
-      const lineIdx = lines.findIndex(line => {
-        const match = line.match(/^(#{1,6})\s+(.+)$/)
-        return match && match[2].trim() === heading.content
+    // Process each heading and its associated content
+    headingsWithIndices.forEach((heading, headingIdx) => {
+      // Add the heading
+      result.push({
+        type: 'heading',
+        level: heading.level,
+        content: heading.content
       })
       
-      if (lineIdx > lastHeadingIdx) {
-        // Add content before this heading
-        const beforeContent = lines.slice(lastHeadingIdx + 1, lineIdx).join('\n').trim()
-        if (beforeContent && !beforeContent.includes('__CODE_BLOCK_') && !beforeContent.includes('__BLOCKQUOTE_')) {
-          const paras = beforeContent.split(/\n\n+/).filter(p => p.trim())
-          paras.forEach(para => {
-            if (para.trim().length > 0) {
-              result.push({
-                type: 'paragraph',
-                content: applyBoldFormatting(para)
-              })
-            }
-          })
-        }
+      // Find content between this heading and the next heading
+      const nextHeadingIdx = headingIdx + 1 < headingsWithIndices.length 
+        ? headingsWithIndices[headingIdx + 1].lineIdx 
+        : lines.length
+      
+      // Get all lines between this heading and the next
+      const contentLines = lines.slice(heading.lineIdx + 1, nextHeadingIdx)
+      const contentText = contentLines.join('\n').trim()
+      
+      if (contentText) {
+        // Split content into bullet points and regular text
+        const contentParts = []
+        let currentParagraph = []
         
-        // Add heading
-        result.push({
-          type: 'heading',
-          level: heading.level,
-          content: heading.content
+        contentLines.forEach(line => {
+          const trimmedLine = line.trim()
+          
+          // Check if it's a bullet point
+          if (/^[-*+]\s+/.test(trimmedLine)) {
+            // If we have accumulated paragraph text, add it first
+            if (currentParagraph.length > 0) {
+              const paraText = currentParagraph.join('\n').trim()
+              if (paraText) {
+                contentParts.push({
+                  type: 'paragraph',
+                  content: paraText
+                })
+              }
+              currentParagraph = []
+            }
+            
+            // Extract bullet point text
+            const bulletText = trimmedLine.replace(/^[-*+]\s+/, '').trim()
+            contentParts.push({
+              type: 'bullet',
+              content: bulletText
+            })
+          } else if (trimmedLine) {
+            // Regular text line
+            currentParagraph.push(line)
+          }
         })
         
-        lastHeadingIdx = lineIdx
-      }
-    })
-    
-    // Add remaining content
-    const afterContent = lines.slice(lastHeadingIdx + 1).join('\n').trim()
-    if (afterContent && !afterContent.includes('__CODE_BLOCK_') && !afterContent.includes('__BLOCKQUOTE_')) {
-      const paras = afterContent.split(/\n\n+/).filter(p => p.trim())
-      paras.forEach(para => {
-        if (para.trim().length > 0) {
+        // Add any remaining paragraph text
+        if (currentParagraph.length > 0) {
+          const paraText = currentParagraph.join('\n').trim()
+          if (paraText) {
+            contentParts.push({
+              type: 'paragraph',
+              content: paraText
+            })
+          }
+        }
+        
+        // Add content parts to result
+        let bulletGroup = []
+        contentParts.forEach(part => {
+          if (part.type === 'bullet') {
+            bulletGroup.push({
+              content: applyBoldFormatting(part.content)
+            })
+          } else {
+            // If we have accumulated bullets, add them as a group
+            if (bulletGroup.length > 0) {
+              result.push({
+                type: 'nested_bullets',
+                items: bulletGroup
+              })
+              bulletGroup = []
+            }
+            
+            // Add the paragraph
+            result.push({
+              type: 'paragraph',
+              content: applyBoldFormatting(part.content)
+            })
+          }
+        })
+        
+        // Add any remaining bullets
+        if (bulletGroup.length > 0) {
           result.push({
-            type: 'paragraph',
-            content: applyBoldFormatting(para)
+            type: 'nested_bullets',
+            items: bulletGroup
           })
         }
-      })
-    }
+      }
+    })
     
     return restoreCodeBlocksAndQuotes(result, codeBlockMap, blockquoteMap)
   }
@@ -599,11 +674,6 @@ export function smartFormatText(text) {
           content: blockquoteMap[quoteKey]
         })
       }
-    } else if (idx === 0 && isHeaderLike(para)) {
-      result.push({
-        type: 'header',
-        content: para.replace(/:$/, '')
-      })
     } else if (para.trim().length > 0) {
       result.push({
         type: 'paragraph',
@@ -612,33 +682,7 @@ export function smartFormatText(text) {
     }
   })
   
-  return result.filter(item => item && ((item.content && item.content.length > 0) || item.type === 'list' || item.type === 'table' || item.type === 'code_block' || item.type === 'blockquote' || item.type === 'heading' || item.type === 'unordered_list'))
-}
-
-/**
- * Restore code blocks and blockquotes in the result
- */
-function restoreCodeBlocksAndQuotes(result, codeBlockMap, blockquoteMap) {
-  return result.map(item => {
-    if (item.type === 'paragraph' || item.type === 'header') {
-      Object.entries(codeBlockMap).forEach(([key, block]) => {
-        if (item.content && item.content.includes(key)) {
-          // This shouldn't happen in well-formed content, but handle it
-        }
-      })
-      Object.entries(blockquoteMap).forEach(([key, quote]) => {
-        if (item.content && item.content.includes(key)) {
-          // This shouldn't happen in well-formed content, but handle it
-        }
-      })
-    }
-    return item
-  }).filter(item => {
-    if (item.content && (item.content.includes('__CODE_BLOCK_') || item.content.includes('__BLOCKQUOTE_'))) {
-      return false
-    }
-    return true
-  })
+  return restoreCodeBlocksAndQuotes(result, codeBlockMap, blockquoteMap)
 }
 
 export default smartFormatText

@@ -88,20 +88,24 @@ export const ChatModeResponse = ({ response, references, followups, onFollowupCl
         )}
       </div>
 
+      {/* Separator before References */}
+      {references && references.length > 0 && (
+        <div className="my-4 h-px bg-gradient-to-r from-purple-500/20 via-purple-500/10 to-transparent"></div>
+      )}
+
       {/* References Section - Premium Design */}
       {references && references.length > 0 && (
-        <div className="mt-8 pt-6 border-t border-gradient-to-r from-blue-500/30 via-cyan-500/20 to-transparent">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="mt-4 pt-4 border-t border-purple-500/20">
+          <div className="flex items-center gap-2 mb-3">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-blue-400" />
-              <h3 className="text-sm font-bold text-white tracking-wide">
-                REFERENCES & SOURCES
+              <h3 className="text-xs font-bold text-blue-300 tracking-widest uppercase">
+                References & Sources
               </h3>
             </div>
-            <div className="flex-1 h-px bg-gradient-to-r from-blue-500/30 to-transparent"></div>
           </div>
           
-          <div className="grid gap-2.5">
+          <div className="grid gap-2">
             {references.map((ref, idx) => (
               <a
                 key={idx}
@@ -141,51 +145,47 @@ export const ChatModeResponse = ({ response, references, followups, onFollowupCl
         </div>
       )}
 
+      {/* Separator before Follow-up Questions */}
+      {followups && followups.length > 0 && (
+        <div className="my-4 h-px bg-gradient-to-r from-purple-500/20 via-purple-500/10 to-transparent"></div>
+      )}
+
       {/* Follow-up Questions Section - Premium Design */}
       {followups && followups.length > 0 && (
-        <div className="mt-8 pt-6 border-t border-gradient-to-r from-purple-500/30 via-pink-500/20 to-transparent">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="mt-4 pt-4 border-t border-purple-500/20">
+          <div className="flex items-center gap-2 mb-3">
             <div className="flex items-center gap-2">
               <MessageCircle className="w-4 h-4 text-purple-400" />
-              <h3 className="text-sm font-bold text-white tracking-wide">
-                FOLLOW-UP QUESTIONS
+              <h3 className="text-xs font-bold text-purple-300 tracking-widest uppercase">
+                Follow-up Questions
               </h3>
             </div>
-            <div className="flex-1 h-px bg-gradient-to-r from-purple-500/30 to-transparent"></div>
           </div>
           
-          <div className="grid gap-2.5">
+          <div className="grid gap-2">
             {followups.map((followup, idx) => (
               <button
                 key={idx}
                 onClick={() => onFollowupClick && onFollowupClick(followup)}
-                className="group relative overflow-hidden rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/20 text-left w-full"
+                className="group relative overflow-hidden rounded-lg transition-all duration-300 hover:shadow-md hover:shadow-purple-500/15 text-left w-full"
                 title={followup}
               >
                 {/* Animated background gradient */}
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 via-pink-600/5 to-purple-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600/5 via-pink-600/2 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 
                 {/* Border gradient */}
-                <div className="absolute inset-0 rounded-xl border border-purple-500/30 group-hover:border-purple-400/60 transition-colors duration-300"></div>
+                <div className="absolute inset-0 rounded-lg border border-purple-500/20 group-hover:border-purple-400/40 transition-colors duration-300"></div>
                 
                 {/* Content */}
-                <div className="relative px-4 py-3 flex items-start gap-3">
-                  <div className="flex-shrink-0 mt-1">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center group-hover:from-purple-500/40 group-hover:to-pink-500/40 transition-all duration-300">
-                      <span className="text-purple-300 group-hover:text-purple-200 transition-colors">→</span>
-                    </div>
+                <div className="relative px-3 py-2 flex items-start gap-2">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <span className="text-purple-400 group-hover:text-purple-300 transition-colors text-lg">➕</span>
                   </div>
                   
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-purple-200 group-hover:text-purple-100 transition-colors line-clamp-2">
+                    <p className="text-sm text-purple-200 group-hover:text-purple-100 transition-colors line-clamp-2">
                       {followup}
                     </p>
-                  </div>
-                  
-                  <div className="flex-shrink-0 mt-1">
-                    <div className="w-5 h-5 rounded-full bg-purple-500/20 group-hover:bg-purple-500/40 flex items-center justify-center transition-all duration-300 opacity-0 group-hover:opacity-100">
-                      <span className="text-purple-300 text-xs">→</span>
-                    </div>
                   </div>
                 </div>
               </button>
@@ -198,166 +198,91 @@ export const ChatModeResponse = ({ response, references, followups, onFollowupCl
 }
 
 /**
- * Format and display debate mode response
+ * Debate mode response with structured arguments
  */
-export const DebateModeResponse = ({ debate, references }) => {
-  const [expandedPersona, setExpandedPersona] = React.useState(null)
+export const DebateModeResponse = ({ response, arguments: args, references, followups, onFollowupClick }) => {
+  const [expandedArgs, setExpandedArgs] = React.useState({})
 
-  const personaColors = {
-    'Optimist': 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800',
-    'Pessimist': 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800',
-    'Data Analyst': 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800',
-  }
-
-  const personaIcons = {
-    'Optimist': '😊',
-    'Pessimist': '😟',
-    'Data Analyst': '📊',
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="mb-4 p-3 bg-muted rounded-lg">
-        <p className="text-sm font-medium text-foreground">
-          🎭 <strong>Debate:</strong> {debate.question}
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        {debate.debate_responses && debate.debate_responses.map((response, idx) => (
-          <div
-            key={idx}
-            className={`border rounded-lg overflow-hidden transition-all ${personaColors[response.persona] || 'bg-muted'}`}
-          >
-            <button
-              onClick={() => setExpandedPersona(expandedPersona === idx ? null : idx)}
-              className="w-full px-4 py-3 flex items-center justify-between hover:opacity-80 transition-opacity"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{personaIcons[response.persona] || '🤔'}</span>
-                <span className="font-semibold text-sm">{response.persona}</span>
-              </div>
-              {expandedPersona === idx ? (
-                <ChevronUp className="w-4 h-4" />
-              ) : (
-                <ChevronDown className="w-4 h-4" />
-              )}
-            </button>
-
-            {expandedPersona === idx && (
-              <div className="px-4 py-3 border-t border-current border-opacity-20">
-                <p className="text-sm whitespace-pre-wrap text-foreground">
-                  {response.response}
-                </p>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {references && references.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-border">
-          <p className="text-xs font-semibold text-muted-foreground mb-2">📚 References</p>
-          <div className="space-y-1">
-            {references.map((ref, idx) => (
-              <a
-                key={idx}
-                href={ref.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-blue-500 hover:underline block truncate"
-                title={ref.title}
-              >
-                {ref.title}
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/**
- * Format and display project mode response
- */
-export const ProjectModeResponse = ({ goal, structured_data, formatted_output, references }) => {
-  const [completedTasks, setCompletedTasks] = React.useState({})
-
-  const toggleTaskCompletion = (phaseIdx, taskIdx) => {
-    const key = `${phaseIdx}-${taskIdx}`
-    setCompletedTasks(prev => ({
+  const toggleArg = (idx) => {
+    setExpandedArgs(prev => ({
       ...prev,
-      [key]: !prev[key]
+      [idx]: !prev[idx]
     }))
   }
 
   return (
     <div className="space-y-4">
-      <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-        <p className="text-sm font-semibold text-foreground mb-1">🎯 Goal</p>
-        <p className="text-sm text-foreground">{goal}</p>
+      {/* Main Response */}
+      <div className="prose prose-sm max-w-none dark:prose-invert">
+        {typeof response === 'string' ? (
+          <FormattedResponseContent text={response} />
+        ) : (
+          <div className="text-sm leading-relaxed">{response}</div>
+        )}
       </div>
 
-      {structured_data && structured_data.phases && (
-        <div className="space-y-3">
-          {structured_data.phases.map((phase, phaseIdx) => (
-            <div key={phaseIdx} className="border border-border rounded-lg overflow-hidden">
-              <div className="px-4 py-3 bg-muted">
-                <p className="font-semibold text-sm text-foreground">
-                  📍 {phase.phase_name}
-                </p>
+      {/* Arguments Section */}
+      {args && args.length > 0 && (
+        <div className="mt-6 pt-4 border-t border-purple-500/20">
+          <h3 className="text-sm font-bold text-white mb-3">Key Arguments</h3>
+          <div className="space-y-2">
+            {args.map((arg, idx) => (
+              <div key={idx} className="border border-purple-500/20 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => toggleArg(idx)}
+                  className="w-full px-4 py-3 flex items-center justify-between hover:bg-purple-500/10 transition-colors text-left"
+                >
+                  <span className="font-semibold text-purple-200">{arg.title}</span>
+                  {expandedArgs[idx] ? (
+                    <ChevronUp className="w-4 h-4 text-purple-400" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-purple-400" />
+                  )}
+                </button>
+                {expandedArgs[idx] && (
+                  <div className="px-4 py-3 bg-purple-500/5 border-t border-purple-500/20 text-sm text-gray-300">
+                    {arg.content}
+                  </div>
+                )}
               </div>
-
-              <div className="px-4 py-3 space-y-2">
-                {phase.tasks && phase.tasks.map((task, taskIdx) => (
-                  <button
-                    key={taskIdx}
-                    onClick={() => toggleTaskCompletion(phaseIdx, taskIdx)}
-                    className="w-full flex items-start gap-3 p-2 hover:bg-muted rounded transition-colors text-left"
-                  >
-                    {completedTasks[`${phaseIdx}-${taskIdx}`] ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    ) : (
-                      <Circle className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
-                    )}
-                    <span className={`text-sm ${completedTasks[`${phaseIdx}-${taskIdx}`] ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                      {task.task_name}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {formatted_output && (
-        <div className="mt-4 p-4 bg-muted rounded-lg border border-border">
-          <p className="text-xs font-semibold text-muted-foreground mb-2">📋 Full Plan</p>
-          <div className="prose prose-sm max-w-none dark:prose-invert text-xs">
-            <pre className="whitespace-pre-wrap text-foreground overflow-auto max-h-96">
-              {formatted_output}
-            </pre>
+            ))}
           </div>
         </div>
       )}
 
+      {/* References */}
       {references && references.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-border">
-          <p className="text-xs font-semibold text-muted-foreground mb-2">📚 References</p>
-          <div className="space-y-1">
+        <div className="mt-6 pt-4 border-t border-purple-500/20">
+          <h3 className="text-sm font-bold text-white mb-3">References</h3>
+          <div className="space-y-2">
             {references.map((ref, idx) => (
               <a
                 key={idx}
                 href={ref.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-blue-500 hover:underline block truncate"
-                title={ref.title}
+                className="block text-sm text-blue-400 hover:text-blue-300 truncate"
               >
-                {ref.title}
+                {ref.title || ref}
               </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Follow-up Questions */}
+      {followups && followups.length > 0 && (
+        <div className="mt-6 pt-4 border-t border-purple-500/20">
+          <h3 className="text-sm font-bold text-white mb-3">Follow-up Questions</h3>
+          <div className="space-y-2">
+            {followups.map((followup, idx) => (
+              <button
+                key={idx}
+                onClick={() => onFollowupClick && onFollowupClick(followup)}
+                className="w-full text-left px-3 py-2 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-sm text-purple-200 hover:text-purple-100 transition-colors"
+              >
+                ➕ {followup}
+              </button>
             ))}
           </div>
         </div>
@@ -366,30 +291,5 @@ export const ProjectModeResponse = ({ goal, structured_data, formatted_output, r
   )
 }
 
-/**
- * Main formatter component that routes to appropriate display
- */
-export const AIModeResponseFormatter = ({ mode = 'chat', response, references, followups, onFollowupClick }) => {
-  if (!response) return null
-
-  // Handle different response structures based on mode
-  if (mode === 'debate' && response.debate) {
-    return <DebateModeResponse debate={response.debate} references={references} />
-  }
-
-  if (mode === 'project' && response.structured_data) {
-    return (
-      <ProjectModeResponse
-        goal={response.goal}
-        structured_data={response.structured_data}
-        formatted_output={response.formatted_output}
-        references={references}
-      />
-    )
-  }
-
-  // Default to chat mode
-  return <ChatModeResponse response={response.response || response} references={references} followups={followups} onFollowupClick={onFollowupClick} />
-}
-
-export default AIModeResponseFormatter
+export const AIModeResponseFormatter = ChatModeResponse
+export default ChatModeResponse

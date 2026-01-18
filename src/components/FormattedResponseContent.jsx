@@ -6,11 +6,49 @@
 import React from 'react'
 import { smartFormatText } from '../lib/smartFormatter'
 import { parseInlineMarkdown, renderInlineMarkdown } from '../lib/inlineFormatter.jsx'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, BookOpen, Lightbulb, Target, Zap, Settings, TrendingUp, Users, Briefcase, Award, Rocket } from 'lucide-react'
 import TableRenderer from './TableRenderer'
 import CodeBlockRenderer from './CodeBlockRenderer'
 import BlockquoteRenderer from './BlockquoteRenderer'
 import UnorderedListRenderer from './UnorderedListRenderer'
+
+/**
+ * Custom bold checkmark icon in purple - thick, solid style
+ */
+const BoldCheckmark = ({ className = 'w-5 h-5' }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="#a78bfa"
+    strokeWidth="4.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <polyline points="20 6 9 17 4 12"></polyline>
+  </svg>
+)
+
+/**
+ * Get appropriate icon for heading content
+ */
+const getHeadingIcon = (content) => {
+  const lowerContent = content.toLowerCase()
+  
+  // Map keywords to icons - comprehensive matching
+  if (lowerContent.match(/objective|goal|aim|purpose|morning|evening|afternoon|before|after|during|week|topic|covered|plan|study/i)) return <Target className="w-5 h-5 text-purple-400" />
+  if (lowerContent.match(/step|activity|process|procedure|exercise|stretching|warm|cool|technique|method|hydration|meditation|break/i)) return <Zap className="w-5 h-5 text-purple-400" />
+  if (lowerContent.match(/question|ask|inquiry|faq|tip|advice|suggestion/i)) return <Lightbulb className="w-5 h-5 text-purple-400" />
+  if (lowerContent.match(/resource|material|tool|reference|link|guide|tutorial|instruction/i)) return <BookOpen className="w-5 h-5 text-purple-400" />
+  if (lowerContent.match(/result|outcome|conclusion|summary|benefit|effect|impact|advantage|feature/i)) return <BoldCheckmark className="w-5 h-5" />
+  if (lowerContent.match(/challenge|issue|problem|difficulty|risk|concern|caution|warning/i)) return <TrendingUp className="w-5 h-5 text-purple-400" />
+  if (lowerContent.match(/team|group|people|collaboration|community|audience|participant|member/i)) return <Users className="w-5 h-5 text-purple-400" />
+  if (lowerContent.match(/business|strategy|plan|approach|method|system|framework|model/i)) return <Briefcase className="w-5 h-5 text-purple-400" />
+  if (lowerContent.match(/next|future|upcoming|launch|continue|additional|more|further|advanced/i)) return <Rocket className="w-5 h-5 text-purple-400" />
+  
+  // Default icon for any heading (numbered or not)
+  return <BoldCheckmark className="w-5 h-5" />
+}
 
 /**
  * Render formatted text with inline Markdown support
@@ -47,9 +85,9 @@ export const FormattedResponseContent = ({ text }) => {
   })
 
   return (
-    <div className="space-y-3 text-white">
+    <div className="space-y-2 text-white">
       {/* DalsiAI Header */}
-      <div className="flex items-center gap-4 pb-4 border-b border-purple-500/30">
+      <div className="flex items-center gap-4 pb-3 border-b border-purple-500/30">
         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
           <Sparkles className="w-6 h-6 text-white" />
         </div>
@@ -100,6 +138,33 @@ export const FormattedResponseContent = ({ text }) => {
           )
         }
 
+        // Handle nested bullet points under headings
+        if (item.type === 'nested_bullets') {
+          return (
+            <div key={idx} className="space-y-1 pl-6 md:pl-8 text-white">
+              {item.items.map((bulletItem, bulletIdx) => (
+                <div
+                  key={bulletIdx}
+                  className="text-sm leading-relaxed flex items-start gap-3"
+                  style={{
+                    textAlign: 'justify',
+                    textAlignLast: 'left',
+                    wordSpacing: '0.05em',
+                    letterSpacing: '0.3px',
+                    lineHeight: '1.6',
+                    hyphens: 'none',
+                    overflowWrap: 'break-word',
+                    wordBreak: 'break-word'
+                  }}
+                >
+                  <span className="text-purple-400 flex-shrink-0 mt-0.5 min-w-fit">•</span>
+                  <span>{renderFormattedText(bulletItem.content)}</span>
+                </div>
+              ))}
+            </div>
+          )
+        }
+
         // Handle Markdown headings
         if (item.type === 'heading') {
           const headingClasses = {
@@ -114,16 +179,21 @@ export const FormattedResponseContent = ({ text }) => {
           // Calculate indentation based on heading level
           const indentMap = {
             1: 'pl-0',
-            2: 'pl-0',
-            3: 'pl-4 md:pl-6',
-            4: 'pl-8 md:pl-12',
-            5: 'pl-12 md:pl-16',
-            6: 'pl-16 md:pl-20'
+            2: 'pl-4 md:pl-6',
+            3: 'pl-8 md:pl-12',
+            4: 'pl-12 md:pl-16',
+            5: 'pl-16 md:pl-20',
+            6: 'pl-20 md:pl-24'
           }
+          
+          const icon = getHeadingIcon(item.content)
+          const marginTop = item.level <= 2 ? 'mt-6' : 'mt-4'
+          const marginBottom = item.level <= 2 ? 'mb-3' : 'mb-2'
 
           return (
-            <div key={idx} className={`${indentMap[item.level] || 'pl-0'} ${headingClasses[item.level] || 'text-lg'} font-semibold text-white mt-4 mb-2 border-b border-purple-500/30 pb-1.5`}>
-              {renderFormattedText(item.content)}
+            <div key={idx} className={`${indentMap[item.level] || 'pl-0'} ${headingClasses[item.level] || 'text-lg'} font-semibold text-white ${marginTop} ${marginBottom} border-b border-purple-500/20 pb-2 flex items-start gap-3`}>
+              {icon ? <span className="text-purple-400 flex-shrink-0 mt-0.5">{icon}</span> : <span className="text-purple-400 flex-shrink-0 mt-0.5">✓</span>}
+              <span>{renderFormattedText(item.content)}</span>
             </div>
           )
         }
@@ -140,7 +210,7 @@ export const FormattedResponseContent = ({ text }) => {
         // Handle numbered lists
         if (item.type === 'list') {
           return (
-            <ol key={idx} className="space-y-2 pl-8 md:pl-12 text-white">
+            <ol key={idx} className="space-y-1 ml-6 pl-4 md:pl-6 text-white">
               {item.items.map((listItem, listIdx) => {
                 // Check if this is a sub-item (e.g., 1.1, 2.3)
                 const isSubItem = listItem.number && listItem.number.toString().includes('.')
@@ -168,12 +238,12 @@ export const FormattedResponseContent = ({ text }) => {
         // Handle regular paragraphs
         if (item.type === 'paragraph') {
           return (
-            <p key={idx} className="text-sm leading-relaxed text-gray-200 pl-6 md:pl-8" style={{
+            <p key={idx} className="text-sm leading-snug text-gray-200 pl-6 md:pl-8" style={{
               textAlign: 'justify',
               textAlignLast: 'left',
               wordSpacing: '0.05em',
               letterSpacing: '0.3px',
-              lineHeight: '1.6',
+              lineHeight: '1.5',
               hyphens: 'none',
               overflowWrap: 'break-word',
               wordBreak: 'break-word'
