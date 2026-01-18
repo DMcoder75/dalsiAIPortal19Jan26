@@ -276,6 +276,7 @@ function hasMarkdownHeadings(text) {
 
 /**
  * Extract Markdown headings with levels and line indices
+ * Also infers heading levels based on content structure and context
  */
 function extractHeadingsWithIndices(text) {
   const lines = text.split('\n')
@@ -291,6 +292,51 @@ function extractHeadingsWithIndices(text) {
       })
     }
   })
+  
+  // Infer hierarchy levels based on content structure
+  // If all headings are level 3 (###), try to infer proper levels
+  const allLevel3 = headings.every(h => h.level === 3)
+  if (allLevel3 && headings.length > 1) {
+    // Analyze content to infer hierarchy
+    let currentMainLevel = 3
+    let subLevelCounter = 0
+    
+    headings.forEach((heading, idx) => {
+      const content = heading.content.toLowerCase()
+      const prevHeading = idx > 0 ? headings[idx - 1].content.toLowerCase() : ''
+      
+      // Check if this looks like a main section (all caps, numbered, or major topic)
+      const isMainSection = /^\d+\.|^[A-Z][A-Z\s]+$|^(Introduction|Overview|Summary|Conclusion|Key|Main|Primary)/.test(heading.content)
+      
+      // Check if this looks like a subsection
+      const isSubsection = /^\d+\.\d+|^(Sub|Detail|Specific|Example|Case|Type|Category)/.test(heading.content)
+      
+      // Check if this looks like a detail/point
+      const isDetail = /^(Point|Item|Feature|Aspect|Element|Component|Part|Section)/.test(heading.content)
+      
+      if (isMainSection && idx === 0) {
+        // First heading is main
+        heading.level = 3
+        currentMainLevel = 3
+        subLevelCounter = 0
+      } else if (isMainSection) {
+        // Main section heading
+        heading.level = 3
+        currentMainLevel = 3
+        subLevelCounter = 0
+      } else if (isSubsection || (content.includes('and') && !isMainSection)) {
+        // Subsection
+        heading.level = 4
+      } else if (isDetail) {
+        // Detail level
+        heading.level = 5
+      } else {
+        // Default: increment level from previous
+        const prevLevel = idx > 0 ? headings[idx - 1].level : 3
+        heading.level = Math.min(prevLevel + 1, 6)
+      }
+    })
+  }
   
   return headings
 }
