@@ -49,11 +49,11 @@ export const FormattedResponseContent = ({ text }) => {
   return (
     <div className="space-y-1.5 text-white">
       {/* DalsiAI Header */}
-      <div className="flex items-center gap-2 pb-2 border-b border-purple-500/30">
-        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
-          <Sparkles className="w-4 h-4 text-white" />
+      <div className="flex items-center gap-3 pb-3 border-b border-purple-500/30">
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+          <Sparkles className="w-5 h-5 text-white" />
         </div>
-        <span className="text-sm font-semibold text-white tracking-wide">DalsiAI</span>
+        <span className="text-base font-bold text-white tracking-wide">DalsiAI</span>
       </div>
 
       {/* Response Content */}
@@ -141,20 +141,26 @@ export const FormattedResponseContent = ({ text }) => {
         if (item.type === 'list') {
           return (
             <ol key={idx} className="space-y-1 ml-6 pl-4 md:pl-6 text-white">
-              {item.items.map((listItem, listIdx) => (
-                <li key={listIdx} className="text-sm leading-snug" style={{
-                  textAlign: 'justify',
-                  textAlignLast: 'left',
-                  wordSpacing: '0.05em',
-                  letterSpacing: '0.3px',
-                  lineHeight: '1.4',
-                  hyphens: 'none',
-                  overflowWrap: 'break-word',
-                  wordBreak: 'break-word'
-                }}>
-                  <span className="font-semibold text-white">{listItem.number}.</span> {renderFormattedText(listItem.content)}
-                </li>
-              ))}
+              {item.items.map((listItem, listIdx) => {
+                // Check if this is a sub-item (e.g., 1.1, 2.3)
+                const isSubItem = listItem.number && listItem.number.toString().includes('.')
+                const subItemIndent = isSubItem ? 'pl-4 md:pl-6' : 'pl-0'
+                
+                return (
+                  <li key={listIdx} className={`text-sm leading-snug ${subItemIndent}`} style={{
+                    textAlign: 'justify',
+                    textAlignLast: 'left',
+                    wordSpacing: '0.05em',
+                    letterSpacing: '0.3px',
+                    lineHeight: '1.4',
+                    hyphens: 'none',
+                    overflowWrap: 'break-word',
+                    wordBreak: 'break-word'
+                  }}>
+                    <span className="font-semibold text-white">{listItem.number}.</span> {renderFormattedText(listItem.content)}
+                  </li>
+                )
+              })}
             </ol>
           )
         }
