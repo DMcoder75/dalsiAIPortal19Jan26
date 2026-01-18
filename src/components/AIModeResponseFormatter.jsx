@@ -167,13 +167,13 @@ export const ChatModeResponse = ({ response, references, followups, onFollowupCl
               <div key={idx}>
                 <button
                   onClick={() => onFollowupClick && onFollowupClick(followup)}
-                  className="group relative w-full transition-all duration-300 text-left py-3 px-4 flex items-center justify-between hover:bg-purple-500/5"
+                  className="group relative w-full transition-all duration-300 text-left py-3 px-4 flex items-center justify-between hover:bg-purple-500/5 !bg-transparent"
                   title={followup}
                 >
                   {/* Content */}
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div className="flex-shrink-0 mt-0.5">
-                      <span className="text-base font-bold text-purple-400 group-hover:text-purple-300 transition-colors">+</span>
+                      <span style={{color: '#a78bfa'}} className="text-base font-bold group-hover:text-purple-300 transition-colors">+</span>
                     </div>
                     
                     <div className="flex-1 min-w-0">
@@ -191,7 +191,7 @@ export const ChatModeResponse = ({ response, references, followups, onFollowupCl
                 
                 {/* Line separator between items */}
                 {idx < followups.length - 1 && (
-                  <div className="h-px bg-purple-500/40"></div>
+                  <div style={{height: '1px', backgroundColor: '#a78bfa', opacity: 0.6}} className="w-full"></div>
                 )}
               </div>
             ))}
