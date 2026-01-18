@@ -205,10 +205,10 @@ export const FormattedResponseContent = ({ text }) => {
           
           const icon = getHeadingIcon(item.content)
           const marginTopPx = item.level <= 2 ? '32px' : '24px'
-          const marginBottomPx = item.level <= 2 ? '4px' : '2px'
+          const marginBottomPx = '0px'
 
           return (
-            <div key={idx} className={`${indentMap[item.level] || 'pl-0'} ${headingClasses[item.level] || 'text-lg'} font-semibold text-white border-b border-purple-500/20 pb-2 flex items-start gap-3`} style={{
+            <div key={idx} className={`${indentMap[item.level] || 'pl-0'} ${headingClasses[item.level] || 'text-lg'} font-semibold text-white border-b border-purple-500/20 pb-0 flex items-start gap-3`} style={{
               marginTop: marginTopPx,
               marginBottom: marginBottomPx
             }}>
