@@ -117,7 +117,46 @@ export const ChatModeResponse = ({ response, references, followups, onFollowupCl
         </div>
       )}
 
-      {/* Thicker Separator before Follow-up Questions */}
+      {/* Follow-up Questions Section */}
+      {followups && followups.length > 0 && (
+        <div className="mt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="w-4 h-4 text-purple-400" />
+              <h3 className="text-xs font-bold text-purple-300 tracking-widest uppercase">
+                Suggested follow-ups
+              </h3>
+            </div>
+          </div>
+          
+          <div className="space-y-0">
+            {followups.map((followup, idx) => (
+              <div key={idx}>
+                <button
+                  onClick={() => onFollowupClick?.(followup)}
+                  className="w-full px-4 py-3 text-left hover:bg-purple-500/10 transition-colors border-b border-purple-500/20 last:border-b-0 group flex items-center justify-between"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-purple-200 group-hover:text-purple-100 transition-colors">
+                      {followup}
+                    </p>
+                  </div>
+                  
+                  <div className="flex-shrink-0 ml-3 text-purple-400 group-hover:text-purple-300 transition-colors">
+                    <span className="text-lg">→</span>
+                  </div>
+                </button>
+                
+                {idx < followups.length - 1 && (
+                  <div style={{height: '1px', backgroundColor: '#a78bfa', opacity: 0.6}} className="w-full"></div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Thicker Separator before Action Buttons */}
       {followups && followups.length > 0 && (
         <div style={{height: '2px', backgroundColor: '#a78bfa', marginTop: '24px', marginBottom: '24px'}} className="w-full"></div>
       )}
