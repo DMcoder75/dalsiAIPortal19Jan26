@@ -183,7 +183,8 @@ function extractListItems(text) {
   // If no items found in separate lines, try to extract from continuous paragraph
   if (items.length === 0) {
     // Match pattern like "1. Item One 2. Item Two 3. Item Three"
-    const regex = /(\d{1,2})\.\s+([^\d]+?)(?=\d{1,2}\.|$)/g
+    // Use lookahead to find next number at word boundary or end of string
+    const regex = /(\d{1,2})\.\s+(.+?)(?=\s+\d{1,2}\.|$)/g
     let match
     
     while ((match = regex.exec(text)) !== null) {
