@@ -854,7 +854,7 @@ export default function Experience() {
                         content={msg.content}
                       />
                     )}
-                    {msg.sender !== 'user' && (
+                    {msg.sender !== 'user' && false && (
                       <AIModeResponseFormatter
                         mode={msg.mode || 'chat'}
                         response={msg.content}
