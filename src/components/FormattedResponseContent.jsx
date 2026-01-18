@@ -47,9 +47,9 @@ export const FormattedResponseContent = ({ text }) => {
   })
 
   return (
-    <div className="space-y-8 text-white">
+    <div className="space-y-1.5 text-white">
       {/* DalsiAI Header */}
-      <div className="flex items-center gap-2 pb-4 border-b border-purple-500/30">
+      <div className="flex items-center gap-2 pb-2 border-b border-purple-500/30">
         <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
           <Sparkles className="w-4 h-4 text-white" />
         </div>
@@ -112,7 +112,7 @@ export const FormattedResponseContent = ({ text }) => {
           }
 
           return (
-            <div key={idx} className={`${headingClasses[item.level] || 'text-lg'} font-semibold text-white mt-6 mb-4 border-b border-purple-500/30 pb-3`}>
+            <div key={idx} className={`${headingClasses[item.level] || 'text-lg'} font-semibold text-white mt-2 mb-1 border-b border-purple-500/30 pb-1`}>
               {renderFormattedText(item.content)}
             </div>
           )
@@ -121,7 +121,7 @@ export const FormattedResponseContent = ({ text }) => {
         // Handle standalone headers
         if (item.type === 'header') {
           return (
-            <h2 key={idx} className="text-lg font-semibold text-white mt-6 mb-4 border-b border-purple-500/30 pb-3">
+            <h2 key={idx} className="text-lg font-semibold text-white mt-2 mb-1 border-b border-purple-500/30 pb-1">
               {renderFormattedText(item.content)}
             </h2>
           )
@@ -130,14 +130,14 @@ export const FormattedResponseContent = ({ text }) => {
         // Handle numbered lists
         if (item.type === 'list') {
           return (
-            <ol key={idx} className="space-y-4 ml-6 text-white">
+            <ol key={idx} className="space-y-1 ml-6 text-white">
               {item.items.map((listItem, listIdx) => (
-                <li key={listIdx} className="text-sm leading-relaxed" style={{
+                <li key={listIdx} className="text-sm leading-snug" style={{
                   textAlign: 'justify',
                   textAlignLast: 'left',
                   wordSpacing: '0.05em',
                   letterSpacing: '0.3px',
-                  lineHeight: '2',
+                  lineHeight: '1.4',
                   hyphens: 'none',
                   overflowWrap: 'break-word',
                   wordBreak: 'break-word'

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import logo from '../assets/DalSiAILogo2.png'
 import { AIModeResponseFormatter } from '../components/AIModeResponseFormatter'
+import { HierarchicalContentRenderer } from '../components/HierarchicalContentRenderer'
 import ConversationHistory from '../components/ConversationHistory'
 import { checkFriction, logFrictionAction } from '../services/frictionAPI'
 import { trackFunnelStep } from '../services/analyticsAPI'
@@ -849,6 +850,11 @@ export default function Experience() {
                     {msg.sender === 'user' ? (
                       <p className="text-sm leading-relaxed">{msg.content}</p>
                     ) : (
+                      <HierarchicalContentRenderer
+                        content={msg.content}
+                      />
+                    )}
+                    {msg.sender !== 'user' && (
                       <AIModeResponseFormatter
                         mode={msg.mode || 'chat'}
                         response={msg.content}
