@@ -155,7 +155,7 @@ export const ChatModeResponse = ({ response, references, followups, onFollowupCl
         <div className="mt-6">
           <div className="flex items-center gap-2 mb-4">
             <div className="flex items-center gap-2">
-              <MessageCircle className="w-4 h-4 text-purple-400" />
+              <span className="text-lg font-bold text-purple-400">+</span>
               <h3 className="text-xs font-bold text-purple-300 tracking-widest uppercase">
                 Suggested follow-ups
               </h3>
@@ -173,7 +173,7 @@ export const ChatModeResponse = ({ response, references, followups, onFollowupCl
                   {/* Content */}
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div className="flex-shrink-0 mt-0.5">
-                      <MessageCircle className="w-3 h-3 text-purple-400 group-hover:text-purple-300 transition-colors" />
+                      <span className="text-base font-bold text-purple-400 group-hover:text-purple-300 transition-colors">+</span>
                     </div>
                     
                     <div className="flex-1 min-w-0">
