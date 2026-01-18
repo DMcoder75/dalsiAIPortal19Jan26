@@ -155,7 +155,9 @@ function parseMarkdownTable(text) {
  */
 function hasNumberedList(text) {
   const lines = text.split('\n')
-  return lines.some(line => /^\d{1,2}\.\s+/.test(line.trim()))
+  // Match lines that start with number followed by period, with or without bold formatting
+  // Examples: "1. Item" or "1. **Bold Item:**"
+  return lines.some(line => /^\d{1,2}\.\s+(?:\*\*)?/.test(line.trim()))
 }
 
 /**
