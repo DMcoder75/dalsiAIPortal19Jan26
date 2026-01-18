@@ -204,12 +204,14 @@ export const FormattedResponseContent = ({ text }) => {
           }
           
           const icon = getHeadingIcon(item.content)
-          // More space BEFORE heading to separate from previous content, less space AFTER to keep close to content
-          const marginTop = item.level <= 2 ? 'mt-12' : 'mt-8'
-          const marginBottom = item.level <= 2 ? 'mb-1' : 'mb-0.5'
+          const marginTopPx = item.level <= 2 ? '32px' : '24px'
+          const marginBottomPx = item.level <= 2 ? '4px' : '2px'
 
           return (
-            <div key={idx} className={`${indentMap[item.level] || 'pl-0'} ${headingClasses[item.level] || 'text-lg'} font-semibold text-white ${marginTop} ${marginBottom} border-b border-purple-500/20 pb-2 flex items-start gap-3`}>
+            <div key={idx} className={`${indentMap[item.level] || 'pl-0'} ${headingClasses[item.level] || 'text-lg'} font-semibold text-white border-b border-purple-500/20 pb-2 flex items-start gap-3`} style={{
+              marginTop: marginTopPx,
+              marginBottom: marginBottomPx
+            }}>
               {icon ? <span className="text-purple-400 flex-shrink-0 mt-0.5">{icon}</span> : <span className="text-purple-400 flex-shrink-0 mt-0.5">✓</span>}
               <span>{renderFormattedText(item.content)}</span>
             </div>
