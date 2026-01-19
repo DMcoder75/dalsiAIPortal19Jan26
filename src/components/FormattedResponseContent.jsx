@@ -1,143 +1,96 @@
 /**
  * FormattedResponseContent
- * Renders AI responses with comprehensive Markdown formatting
+ * Renders AI responses with Markdown + Math support using react-markdown
  */
 
-import React, { useEffect } from 'react'
-import { smartFormatText } from '../lib/smartFormatter'
-import { parseInlineMarkdown, renderInlineMarkdown } from '../lib/inlineFormatter.jsx'
-import { Sparkles, BookOpen, Lightbulb, Target, Zap, Settings, TrendingUp, Users, Briefcase, Award, Rocket } from 'lucide-react'
-import TableRenderer from './TableRenderer'
-import CodeBlockRenderer from './CodeBlockRenderer'
-import BlockquoteRenderer from './BlockquoteRenderer'
-import UnorderedListRenderer from './UnorderedListRenderer'
-import { InlineMath, BlockMath } from 'react-katex'
+import React from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
+import { Sparkles } from 'lucide-react'
 
 /**
- * Custom bold checkmark icon in purple - thick, solid style
+ * Comprehensive LaTeX symbol replacement
+ * Must be done BEFORE markdown parsing to avoid breaking list structure
  */
-const BoldCheckmark = ({ className = 'w-5 h-5' }) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="#a78bfa"
-    strokeWidth="4.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <polyline points="20 6 9 17 4 12"></polyline>
-  </svg>
-)
-
-/**
- * Get appropriate icon for heading content
- */
-const getHeadingIcon = (content) => {
-  const lowerContent = content.toLowerCase()
+const replaceLatexSymbols = (text) => {
+  if (!text || typeof text !== 'string') return text
   
-  // Map keywords to icons - comprehensive matching
-  if (lowerContent.match(/objective|goal|aim|purpose|morning|evening|afternoon|before|after|during|week|topic|covered|plan|study/i)) return <Target className="w-5 h-5 text-purple-400" />
-  if (lowerContent.match(/step|activity|process|procedure|exercise|stretching|warm|cool|technique|method|hydration|meditation|break/i)) return <Zap className="w-5 h-5 text-purple-400" />
-  if (lowerContent.match(/question|ask|inquiry|faq|tip|advice|suggestion/i)) return <Lightbulb className="w-5 h-5 text-purple-400" />
-  if (lowerContent.match(/resource|material|tool|reference|link|guide|tutorial|instruction/i)) return <BookOpen className="w-5 h-5 text-purple-400" />
-  if (lowerContent.match(/result|outcome|conclusion|summary|benefit|effect|impact|advantage|feature/i)) return <BoldCheckmark className="w-5 h-5" />
-  if (lowerContent.match(/challenge|issue|problem|difficulty|risk|concern|caution|warning/i)) return <TrendingUp className="w-5 h-5 text-purple-400" />
-  if (lowerContent.match(/team|group|people|collaboration|community|audience|participant|member/i)) return <Users className="w-5 h-5 text-purple-400" />
-  if (lowerContent.match(/business|strategy|plan|approach|method|system|framework|model/i)) return <Briefcase className="w-5 h-5 text-purple-400" />
-  if (lowerContent.match(/next|future|upcoming|launch|continue|additional|more|further|advanced/i)) return <Rocket className="w-5 h-5 text-purple-400" />
-  
-  // Default icon for any heading (numbered or not)
-  return <BoldCheckmark className="w-5 h-5" />
+  return text
+    // Replace fractions with simplified format: \frac{a}{b} → a/b
+    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '$1/$2')
+    
+    // Replace common mathematical symbols
+    .replace(/\\times/g, '×')
+    .replace(/\\approx/g, '≈')
+    .replace(/\\cdot/g, '·')
+    .replace(/\\div/g, '÷')
+    .replace(/\\pm/g, '±')
+    .replace(/\\mp/g, '∓')
+    .replace(/\\infty/g, '∞')
+    .replace(/\\sqrt/g, '√')
+    .replace(/\\sum/g, '∑')
+    .replace(/\\prod/g, '∏')
+    .replace(/\\int/g, '∫')
+    .replace(/\\partial/g, '∂')
+    .replace(/\\nabla/g, '∇')
+    .replace(/\\leq/g, '≤')
+    .replace(/\\geq/g, '≥')
+    .replace(/\\neq/g, '≠')
+    .replace(/\\equiv/g, '≡')
+    .replace(/\\propto/g, '∝')
+    .replace(/\\sim/g, '~')
+    .replace(/\\approx/g, '≈')
+    .replace(/\\cong/g, '≅')
+    .replace(/\\ll/g, '<<')
+    .replace(/\\gg/g, '>>')
+    .replace(/\\in/g, '∈')
+    .replace(/\\notin/g, '∉')
+    .replace(/\\subset/g, '⊂')
+    .replace(/\\supset/g, '⊃')
+    .replace(/\\subseteq/g, '⊆')
+    .replace(/\\supseteq/g, '⊇')
+    .replace(/\\cap/g, '∩')
+    .replace(/\\cup/g, '∪')
+    .replace(/\\emptyset/g, '∅')
+    .replace(/\\forall/g, '∀')
+    .replace(/\\exists/g, '∃')
+    .replace(/\\neg/g, '¬')
+    .replace(/\\wedge/g, '∧')
+    .replace(/\\vee/g, '∨')
+    .replace(/\\rightarrow/g, '→')
+    .replace(/\\leftarrow/g, '←')
+    .replace(/\\leftrightarrow/g, '↔')
+    .replace(/\\Rightarrow/g, '⇒')
+    .replace(/\\Leftarrow/g, '⇐')
+    .replace(/\\Leftrightarrow/g, '⇔')
+    
+    // Remove \text{...} wrapper
+    .replace(/\\text\{([^}]*)\}/g, '$1')
+    
+    // Remove \left and \right
+    .replace(/\\left\(/g, '(')
+    .replace(/\\right\)/g, ')')
+    .replace(/\\left\[/g, '[')
+    .replace(/\\right\]/g, ']')
+    .replace(/\\left\{/g, '{')
+    .replace(/\\right\}/g, '}')
+    .replace(/\\left\|/g, '|')
+    .replace(/\\right\|/g, '|')
 }
 
 /**
- * Convert LaTeX formulas to KaTeX components
- */
-const renderLatexContent = (text) => {
-  if (!text) return null
-
-  const parts = []
-  let lastIndex = 0
-  
-  const displayRegex = /\\\[([^\\\]]*?)\\\]/g
-  const inlineRegex = /\\\(([^\\\)]*?)\\\)/g
-  
-  let allMatches = []
-  let match
-  
-  while ((match = displayRegex.exec(text)) !== null) {
-    allMatches.push({ start: match.index, end: match.index + match[0].length, content: match[1], type: 'display' })
-  }
-  
-  inlineRegex.lastIndex = 0
-  while ((match = inlineRegex.exec(text)) !== null) {
-    allMatches.push({ start: match.index, end: match.index + match[0].length, content: match[1], type: 'inline' })
-  }
-  
-  allMatches.sort((a, b) => a.start - b.start)
-  
-  lastIndex = 0
-  allMatches.forEach(m => {
-    if (m.start > lastIndex) {
-      parts.push({ type: 'text', content: text.substring(lastIndex, m.start) })
-    }
-    parts.push({ type: m.type === 'display' ? 'block_math' : 'inline_math', content: m.content })
-    lastIndex = m.end
-  })
-  
-  if (lastIndex < text.length) {
-    parts.push({ type: 'text', content: text.substring(lastIndex) })
-  }
-  
-  return parts.map((part, idx) => {
-    if (part.type === 'text') {
-      return <span key={idx}>{part.content}</span>
-    } else if (part.type === 'inline_math') {
-      return <InlineMath key={idx}>{part.content}</InlineMath>
-    } else if (part.type === 'block_math') {
-      return <div key={idx} className="my-2"><BlockMath>{part.content}</BlockMath></div>
-    }
-  })
-}
-
-/**
- * Render formatted text with inline Markdown support
- */
-const renderFormattedText = (paragraph) => {
-  if (!paragraph) return null
-
-  const parts = parseInlineMarkdown(paragraph)
-  return renderInlineMarkdown(parts)
-}
-
-/**
- * Parse response text and render as formatted React components
+ * Parse response text and render as formatted React components with Markdown + Math
  */
 export const FormattedResponseContent = ({ text }) => {
   if (!text || typeof text !== 'string') return <p className="text-sm text-white">{text}</p>
 
-  // DEBUG: Log the full text received
-  console.log('[FormattedResponseContent] Full text length:', text.length)
-  console.log('[FormattedResponseContent] Text preview (first 300 chars):', text.substring(0, 300))
-  console.log('[FormattedResponseContent] Text ending (last 300 chars):', text.substring(text.length - 300))
-
-  // Apply smart formatting
-  const formattedItems = smartFormatText(text)
-  
-  // DEBUG: Log what smartFormatter returns
-  console.log('[FormattedResponseContent] Formatted items count:', formattedItems.length)
-  formattedItems.forEach((item, idx) => {
-    if (item.content) {
-      console.log(`[FormattedResponseContent] Item ${idx}: type=${item.type}, contentLength=${item.content.length}, preview=${typeof item.content === 'string' ? item.content.substring(0, 100) : 'not string'}`)
-    } else {
-      console.log(`[FormattedResponseContent] Item ${idx}: type=${item.type}`)
-    }
-  })
+  // Replace LaTeX symbols BEFORE markdown parsing
+  const processedText = replaceLatexSymbols(text)
 
   return (
-    <div className="space-y-2 text-white">
+    <div className="space-y-4 text-white">
       {/* DalsiAI Header */}
       <div className="flex items-center gap-4 pb-3 border-b border-purple-500/30">
         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
@@ -146,255 +99,89 @@ export const FormattedResponseContent = ({ text }) => {
         <span className="text-lg font-bold text-white tracking-wide">DalsiAI</span>
       </div>
 
-      {/* Response Content */}
-      {formattedItems.map((item, idx) => {
-        // Handle tables
-        if (item.type === 'table') {
-          return (
-            <TableRenderer
-              key={idx}
-              headers={item.headers}
-              rows={item.rows}
-            />
-          )
-        }
-
-        // Handle code blocks
-        if (item.type === 'code_block') {
-          return (
-            <CodeBlockRenderer
-              key={idx}
-              language={item.language}
-              code={item.code}
-            />
-          )
-        }
-
-        // Handle blockquotes
-        if (item.type === 'blockquote') {
-          return (
-            <BlockquoteRenderer
-              key={idx}
-              content={item.content}
-            />
-          )
-        }
-
-        // Handle unordered lists
-        if (item.type === 'unordered_list') {
-          return (
-            <UnorderedListRenderer
-              key={idx}
-              items={item.items}
-            />
-          )
-        }
-
-        // Handle nested bullet points under headings
-        if (item.type === 'nested_bullets') {
-          // Get the previous heading to determine indentation level
-          let headingLevel = 3
-          for (let i = idx - 1; i >= 0; i--) {
-            if (formattedItems[i].type === 'heading') {
-              headingLevel = formattedItems[i].level
-              break
-            }
+      {/* Response Content with Markdown + Math */}
+      <div className="prose prose-invert max-w-none text-gray-200">
+        <style>{`
+          /* Fix list rendering - remove paragraph margins inside list items */
+          li > p {
+            margin-bottom: 0 !important;
+            margin-top: 0 !important;
+            display: inline;
           }
           
-          // Indent bullets based on parent heading level
-          const bulletIndentMap = {
-            3: 'pl-12 md:pl-16',
-            4: 'pl-16 md:pl-20',
-            5: 'pl-20 md:pl-24',
-            6: 'pl-24 md:pl-28'
+          li > p + ul,
+          li > p + ol {
+            margin-top: 0.5rem;
+            display: block;
           }
           
-          return (
-            <div key={idx} className={`space-y-1 ${bulletIndentMap[headingLevel] || 'pl-12 md:pl-16'} text-white`}>
-              {item.items.map((bulletItem, bulletIdx) => (
-                <div
-                  key={bulletIdx}
-                  className="text-sm leading-relaxed flex items-start gap-3"
-                  style={{
-                    textAlign: 'justify',
-                    textAlignLast: 'left',
-                    wordSpacing: '0.05em',
-                    letterSpacing: '0.3px',
-                    lineHeight: '1.6',
-                    hyphens: 'none',
-                    overflowWrap: 'break-word',
-                    wordBreak: 'break-word'
-                  }}
-                >
-                  <span className="text-purple-400 flex-shrink-0 mt-0.5 min-w-fit">•</span>
-                  <span>{renderFormattedText(bulletItem.content)}</span>
-                </div>
-              ))}
-            </div>
-          )
-        }
-
-        // Handle Markdown headings
-        if (item.type === 'heading') {
-          const headingClasses = {
-            1: 'text-2xl',
-            2: 'text-xl',
-            3: 'text-lg',
-            4: 'text-base',
-            5: 'text-sm',
-            6: 'text-xs'
-          }
-
-          // Calculate indentation based on heading level
-          const indentMap = {
-            1: 'pl-0',
-            2: 'pl-4 md:pl-6',
-            3: 'pl-8 md:pl-12',
-            4: 'pl-12 md:pl-16',
-            5: 'pl-16 md:pl-20',
-            6: 'pl-20 md:pl-24'
+          /* Proper list indentation */
+          ol, ul {
+            padding-left: 1.5em !important;
+            margin-left: 0 !important;
           }
           
-          const icon = getHeadingIcon(item.content)
-          const marginTopPx = item.level <= 2 ? '32px' : '24px'
-          const marginBottomPx = '0px'
-
-          return (
-            <div key={idx} className={`${indentMap[item.level] || 'pl-0'} ${headingClasses[item.level] || 'text-lg'} font-semibold text-white border-b border-purple-500/20 pb-0 flex items-start gap-3`} style={{
-              marginTop: marginTopPx,
-              marginBottom: marginBottomPx
-            }}>
-              {icon ? <span className="text-purple-400 flex-shrink-0 mt-0.5">{icon}</span> : <span className="text-purple-400 flex-shrink-0 mt-0.5">✓</span>}
-              <span>{renderFormattedText(item.content)}</span>
-            </div>
-          )
-        }
-
-        // Handle standalone headers
-        if (item.type === 'header') {
-          return (
-            <h2 key={idx} className="text-lg font-semibold text-white mt-3 mb-1.5 border-b border-purple-500/30 pb-1 pl-4 md:pl-6">
-              {renderFormattedText(item.content)}
-            </h2>
-          )
-        }
-
-        // Handle numbered lists
-        if (item.type === 'list') {
-          // Use headingLevel if available, otherwise look back for parent heading
-          let headingLevel = item.headingLevel || 3
-          if (!item.headingLevel) {
-            for (let i = idx - 1; i >= 0; i--) {
-              if (formattedItems[i].type === 'heading') {
-                headingLevel = formattedItems[i].level
-                break
-              }
-            }
+          li {
+            display: list-item;
+            margin-left: 0 !important;
+            padding-left: 0 !important;
           }
           
-          // Indent lists based on heading level (same as nested_bullets)
-          const listIndentMap = {
-            3: 'pl-12 md:pl-16',
-            4: 'pl-16 md:pl-20',
-            5: 'pl-20 md:pl-24',
-            6: 'pl-24 md:pl-28'
+          /* Nested lists */
+          li > ol,
+          li > ul {
+            padding-left: 1.5em;
+            margin-top: 0.5rem;
           }
-          
-          return (
-            <ol key={idx} className={`space-y-2 ${listIndentMap[headingLevel] || 'pl-12 md:pl-16'} text-white`}>
-              {item.items.map((listItem, listIdx) => {
-                // Check if this is a sub-item (e.g., 1.1, 2.3)
-                const isSubItem = listItem.number && listItem.number.toString().includes('.')
-                const subItemIndent = isSubItem ? 'pl-4 md:pl-6' : 'pl-0'
-                
-                // Split content by lines to handle multi-line items with nested content
-                const contentLines = listItem.content.split('\n')
-                const firstLine = contentLines[0]
-                const nestedLines = contentLines.slice(1)
-                
-                return (
-                  <li key={listIdx} className={`text-sm leading-relaxed ${subItemIndent}`} style={{
-                    textAlign: 'justify',
-                    textAlignLast: 'left',
-                    wordSpacing: '0.05em',
-                    letterSpacing: '0.3px',
-                    lineHeight: '1.6',
-                    hyphens: 'none',
-                    overflowWrap: 'break-word',
-                    wordBreak: 'break-word'
-                  }}>
-                    <span className="font-semibold text-white">{listItem.number}.</span> {renderLatexContent(firstLine)}
-                    {nestedLines.length > 0 && (
-                      <div className="mt-1 space-y-1">
-                        {nestedLines.map((nestedLine, nestedIdx) => {
-                          const trimmedNested = nestedLine.trim()
-                          if (!trimmedNested) return null
-                          
-                          // Check if it's a bullet point or nested item
-                          const isBullet = /^[-*+]\s+/.test(trimmedNested)
-                          const bulletMatch = trimmedNested.match(/^[-*+]\s+(.+)$/)
-                          const bulletContent = bulletMatch ? bulletMatch[1] : trimmedNested
-                          
-                          return (
-                            <div key={nestedIdx} className="flex items-start gap-2 ml-2">
-                              {isBullet && <span className="text-purple-400 flex-shrink-0 mt-0.5">•</span>}
-                              <span className={isBullet ? '' : 'ml-2'}>{renderLatexContent(bulletContent)}</span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </li>
-                )
-              })}
-            </ol>
-          )
-        }
-
-        // Handle regular paragraphs
-        if (item.type === 'paragraph') {
-          // Use headingLevel if available, otherwise look back for parent heading
-          let headingLevel = item.headingLevel || 3
-          if (!item.headingLevel) {
-            for (let i = idx - 1; i >= 0; i--) {
-              if (formattedItems[i].type === 'heading') {
-                headingLevel = formattedItems[i].level
-                break
-              }
-            }
-          }
-          
-          // Indent paragraphs based on heading level
-          const paragraphIndentMap = {
-            3: 'pl-8 md:pl-12',
-            4: 'pl-12 md:pl-16',
-            5: 'pl-16 md:pl-20',
-            6: 'pl-20 md:pl-24'
-          }
-          
-          return (
-            <p key={idx} className={`text-sm leading-snug text-gray-200 ${paragraphIndentMap[headingLevel] || 'pl-8 md:pl-12'}`} style={{
-              textAlign: 'justify',
-              textAlignLast: 'left',
-              wordSpacing: '0.05em',
-              letterSpacing: '0.3px',
-              lineHeight: '1.6',
-              hyphens: 'none',
-              overflowWrap: 'break-word',
-              wordBreak: 'break-word'
-            }}>
-              {renderLatexContent(item.content)}
-            </p>
-          )
-        }
-
-        // Fallback for unknown types
-        return (
-          <div key={idx} className="text-sm text-gray-300">
-            {item.content || JSON.stringify(item)}
-          </div>
-        )
-      })}
+        `}</style>
+        <ReactMarkdown
+          remarkPlugins={[remarkMath]}
+          rehypePlugins={[rehypeKatex]}
+          components={{
+            // Custom styling for headings
+            h1: ({ node, ...props }) => <h1 className="text-2xl font-bold text-white mt-4 mb-2 border-b border-purple-500/30 pb-2" {...props} />,
+            h2: ({ node, ...props }) => <h2 className="text-xl font-bold text-white mt-4 mb-2 border-b border-purple-500/30 pb-2" {...props} />,
+            h3: ({ node, ...props }) => <h3 className="text-lg font-semibold text-white mt-3 mb-2" {...props} />,
+            h4: ({ node, ...props }) => <h4 className="text-base font-semibold text-white mt-2 mb-1" {...props} />,
+            
+            // Custom styling for paragraphs
+            p: ({ node, ...props }) => <p className="text-sm leading-relaxed text-gray-200 mb-3" style={{ textAlign: 'justify', textAlignLast: 'left' }} {...props} />,
+            
+            // Custom styling for lists - FIXED: keep number and text inline
+            ul: ({ node, ...props }) => <ul className="list-disc list-inside space-y-1 mb-3 pl-0" {...props} />,
+            ol: ({ node, ...props }) => <ol className="list-decimal list-inside space-y-0 mb-3 pl-0" {...props} />,
+            li: ({ node, ...props }) => <li className="text-sm text-gray-200 ml-0" {...props} />,
+            
+            // Custom styling for blockquotes
+            blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-purple-500 pl-4 italic text-gray-300 my-3" {...props} />,
+            
+            // Custom styling for code
+            code: ({ node, inline, ...props }) => 
+              inline ? 
+                <code className="bg-purple-900/30 text-purple-200 px-1.5 py-0.5 rounded text-xs" {...props} /> :
+                <code className="bg-purple-900/50 text-purple-100 p-3 rounded block my-3 overflow-x-auto text-xs" {...props} />,
+            
+            pre: ({ node, ...props }) => <pre className="bg-purple-900/50 p-3 rounded my-3 overflow-x-auto" {...props} />,
+            
+            // Custom styling for tables
+            table: ({ node, ...props }) => <table className="border-collapse border border-purple-500/30 my-3 w-full text-sm" {...props} />,
+            thead: ({ node, ...props }) => <thead className="bg-purple-900/30" {...props} />,
+            tbody: ({ node, ...props }) => <tbody {...props} />,
+            tr: ({ node, ...props }) => <tr className="border border-purple-500/30" {...props} />,
+            th: ({ node, ...props }) => <th className="border border-purple-500/30 p-2 text-left font-semibold text-purple-200" {...props} />,
+            td: ({ node, ...props }) => <td className="border border-purple-500/30 p-2" {...props} />,
+            
+            // Custom styling for links
+            a: ({ node, ...props }) => <a className="text-purple-400 hover:text-purple-300 underline" {...props} />,
+            
+            // Custom styling for strong/emphasis
+            strong: ({ node, ...props }) => <strong className="font-semibold text-white" {...props} />,
+            em: ({ node, ...props }) => <em className="italic text-gray-300" {...props} />,
+          }}
+        >
+          {processedText}
+        </ReactMarkdown>
+      </div>
     </div>
   )
 }
