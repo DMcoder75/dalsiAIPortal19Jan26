@@ -105,28 +105,12 @@ export default function Footer() {
 
   {/* Contact Information */}
   <div className="border-t border-border mt-12 pt-8">
-   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
    <div className="flex items-center space-x-3">
     <Mail className="h-5 w-5 text-primary" />
     <div>
     <div className="text-sm font-medium text-foreground">Email</div>
     <div className="text-sm text-muted-foreground">info@neodalsi.com</div>
     </div>
-   </div>
-   <div className="flex items-center space-x-3">
-    <Phone className="h-5 w-5 text-primary" />
-    <div>
-    <div className="text-sm font-medium text-foreground">Phone</div>
-    <div className="text-sm text-muted-foreground">+1 (555) 123-4567</div>
-    </div>
-   </div>
-   <div className="flex items-center space-x-3">
-    <MapPin className="h-5 w-5 text-primary" />
-    <div>
-    <div className="text-sm font-medium text-foreground">Address</div>
-    <div className="text-sm text-muted-foreground">AI Innovation Hub, Tech Valley</div>
-    </div>
-   </div>
    </div>
   </div>
   </div>

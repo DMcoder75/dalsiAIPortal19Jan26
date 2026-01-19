@@ -322,9 +322,7 @@ export default function PrivacyPolicy() {
                   data practices, please contact us:
                 </p>
                 <div className="bg-background rounded-lg p-6 border border-border">
-                  <p className="text-foreground font-medium mb-2">Dalsi AI & Automations</p>
                   <p>Email: <span className="text-primary">info@neodalsi.com</span></p>
-                  <p>Address: AI Innovation Hub, Tech Valley</p>
                 </div>
                 <p className="leading-relaxed">
                   We are committed to addressing your privacy concerns and will respond to your inquiries 
