@@ -323,7 +323,7 @@ export const FormattedResponseContent = ({ text }) => {
                     overflowWrap: 'break-word',
                     wordBreak: 'break-word'
                   }}>
-                    <span className="font-semibold text-white">{listItem.number}.</span> {renderFormattedText(firstLine)}
+                    <span className="font-semibold text-white">{listItem.number}.</span> {renderLatexContent(firstLine)}
                     {nestedLines.length > 0 && (
                       <div className="mt-1 space-y-1">
                         {nestedLines.map((nestedLine, nestedIdx) => {
@@ -338,7 +338,7 @@ export const FormattedResponseContent = ({ text }) => {
                           return (
                             <div key={nestedIdx} className="flex items-start gap-2 ml-2">
                               {isBullet && <span className="text-purple-400 flex-shrink-0 mt-0.5">•</span>}
-                              <span className={isBullet ? '' : 'ml-2'}>{renderFormattedText(bulletContent)}</span>
+                              <span className={isBullet ? '' : 'ml-2'}>{renderLatexContent(bulletContent)}</span>
                             </div>
                           )
                         })}
