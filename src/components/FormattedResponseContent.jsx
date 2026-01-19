@@ -3,7 +3,7 @@
  * Renders AI responses with comprehensive Markdown formatting
  */
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import { smartFormatText } from '../lib/smartFormatter'
 import { parseInlineMarkdown, renderInlineMarkdown } from '../lib/inlineFormatter.jsx'
 import { Sparkles, BookOpen, Lightbulb, Target, Zap, Settings, TrendingUp, Users, Briefcase, Award, Rocket } from 'lucide-react'
@@ -11,6 +11,8 @@ import TableRenderer from './TableRenderer'
 import CodeBlockRenderer from './CodeBlockRenderer'
 import BlockquoteRenderer from './BlockquoteRenderer'
 import UnorderedListRenderer from './UnorderedListRenderer'
+import { InlineMath, BlockMath } from 'react-katex'
+import 'katex/dist/katex.min.css'
 
 /**
  * Custom bold checkmark icon in purple - thick, solid style
@@ -48,6 +50,56 @@ const getHeadingIcon = (content) => {
   
   // Default icon for any heading (numbered or not)
   return <BoldCheckmark className="w-5 h-5" />
+}
+
+/**
+ * Convert LaTeX formulas to KaTeX components
+ */
+const renderLatexContent = (text) => {
+  if (!text) return null
+
+  const parts = []
+  let lastIndex = 0
+  
+  const displayRegex = /\\\\\[([^\\\\\]]+)\\\\\]/g
+  const inlineRegex = /\\\\\(([^\\\\\)]+)\\\\\)/g
+  
+  let allMatches = []
+  let match
+  
+  while ((match = displayRegex.exec(text)) !== null) {
+    allMatches.push({ start: match.index, end: match.index + match[0].length, content: match[1], type: 'display' })
+  }
+  
+  inlineRegex.lastIndex = 0
+  while ((match = inlineRegex.exec(text)) !== null) {
+    allMatches.push({ start: match.index, end: match.index + match[0].length, content: match[1], type: 'inline' })
+  }
+  
+  allMatches.sort((a, b) => a.start - b.start)
+  
+  lastIndex = 0
+  allMatches.forEach(m => {
+    if (m.start > lastIndex) {
+      parts.push({ type: 'text', content: text.substring(lastIndex, m.start) })
+    }
+    parts.push({ type: m.type === 'display' ? 'block_math' : 'inline_math', content: m.content })
+    lastIndex = m.end
+  })
+  
+  if (lastIndex < text.length) {
+    parts.push({ type: 'text', content: text.substring(lastIndex) })
+  }
+  
+  return parts.map((part, idx) => {
+    if (part.type === 'text') {
+      return <span key={idx}>{part.content}</span>
+    } else if (part.type === 'inline_math') {
+      return <InlineMath key={idx}>{part.content}</InlineMath>
+    } else if (part.type === 'block_math') {
+      return <div key={idx} className="my-2"><BlockMath>{part.content}</BlockMath></div>
+    }
+  })
 }
 
 /**
@@ -331,7 +383,7 @@ export const FormattedResponseContent = ({ text }) => {
               overflowWrap: 'break-word',
               wordBreak: 'break-word'
             }}>
-              {renderFormattedText(item.content)}
+              {renderLatexContent(item.content)}
             </p>
           )
         }
