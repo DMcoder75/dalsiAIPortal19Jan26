@@ -859,8 +859,16 @@ export default function Experience() {
 
         {/* Chat Area */}
         <div className="flex-1 overflow-y-auto flex flex-col items-center p-4 md:p-8">
-          {/* Small Logo - Always Visible */}
-          <div className="w-12 h-12 mx-auto mb-6">
+          {/* Logo with Text - Desktop View */}
+          <div className="hidden md:flex flex-col items-center mb-12">
+            <div className="w-24 h-24 mx-auto mb-4">
+              <img src={logo} alt="DalSiAI" className="w-full h-full object-contain" />
+            </div>
+            <h1 className="text-3xl font-bold text-white">DalsiAI</h1>
+          </div>
+          
+          {/* Small Logo - Mobile View */}
+          <div className="md:hidden w-12 h-12 mx-auto mb-6">
             <img src={logo} alt="DalSiAI" className="w-full h-full object-contain" />
           </div>
           
