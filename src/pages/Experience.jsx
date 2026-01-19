@@ -689,10 +689,10 @@ export default function Experience() {
                 className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors"
               >
                 <div className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">
-                  {user.user_metadata?.first_name?.[0]?.toUpperCase() || user.email?.[0].toUpperCase() || 'U'}
+                  {(user.first_name && user.first_name.trim() ? user.first_name : (user.email ? user.email.split('@')[0] : 'User'))?.[0]?.toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-sm font-semibold truncate text-purple-100">{user.user_metadata?.first_name || 'User'}</p>
+                  <p className="text-sm font-semibold truncate text-purple-100">{user.first_name && user.first_name.trim() ? user.first_name : (user.email ? user.email.split('@')[0] : 'User')}</p>
                   <p className="text-xs text-muted-foreground">
                     {(() => {
                       const tier = user.subscription_tier || 'free'
