@@ -61,8 +61,8 @@ const renderLatexContent = (text) => {
   const parts = []
   let lastIndex = 0
   
-  const displayRegex = /\\\\\[([^\\\\\]]+)\\\\\]/g
-  const inlineRegex = /\\\\\(([^\\\\\)]+)\\\\\)/g
+  const displayRegex = /\\\[([^\\\]]*?)\\\]/g
+  const inlineRegex = /\\\(([^\\\)]*?)\\\)/g
   
   let allMatches = []
   let match
