@@ -141,10 +141,16 @@ export const ChatModeResponse = ({ response, references, followups, onFollowupCl
                   onClick={() => onFollowupClick?.(followup)}
                   className="w-full px-4 py-3 text-left hover:bg-purple-500/10 transition-colors border-b border-purple-500/20 last:border-b-0 group flex items-center justify-between"
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-purple-200 group-hover:text-purple-100 transition-colors">
-                      {followup}
-                    </p>
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <span style={{color: '#a78bfa'}} className="text-base font-bold group-hover:text-purple-300 transition-colors">+</span>
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-purple-200 group-hover:text-purple-100 transition-colors">
+                        {followup}
+                      </p>
+                    </div>
                   </div>
                   
                   <div className="flex-shrink-0 ml-3 text-purple-400 group-hover:text-purple-300 transition-colors">
