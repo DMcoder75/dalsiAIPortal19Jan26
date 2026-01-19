@@ -249,11 +249,16 @@ export const FormattedResponseContent = ({ text }) => {
           }
           
           return (
-            <ol key={idx} className={`space-y-1 ${listIndentMap[headingLevel] || 'pl-12 md:pl-16'} text-white`}>
+            <ol key={idx} className={`space-y-2 ${listIndentMap[headingLevel] || 'pl-12 md:pl-16'} text-white`}>
               {item.items.map((listItem, listIdx) => {
                 // Check if this is a sub-item (e.g., 1.1, 2.3)
                 const isSubItem = listItem.number && listItem.number.toString().includes('.')
                 const subItemIndent = isSubItem ? 'pl-4 md:pl-6' : 'pl-0'
+                
+                // Split content by lines to handle multi-line items with nested content
+                const contentLines = listItem.content.split('\n')
+                const firstLine = contentLines[0]
+                const nestedLines = contentLines.slice(1)
                 
                 return (
                   <li key={listIdx} className={`text-sm leading-relaxed ${subItemIndent}`} style={{
@@ -266,7 +271,27 @@ export const FormattedResponseContent = ({ text }) => {
                     overflowWrap: 'break-word',
                     wordBreak: 'break-word'
                   }}>
-                    <span className="font-semibold text-white">{listItem.number}.</span> {renderFormattedText(listItem.content)}
+                    <span className="font-semibold text-white">{listItem.number}.</span> {renderFormattedText(firstLine)}
+                    {nestedLines.length > 0 && (
+                      <div className="mt-1 space-y-1">
+                        {nestedLines.map((nestedLine, nestedIdx) => {
+                          const trimmedNested = nestedLine.trim()
+                          if (!trimmedNested) return null
+                          
+                          // Check if it's a bullet point or nested item
+                          const isBullet = /^[-*+]\s+/.test(trimmedNested)
+                          const bulletMatch = trimmedNested.match(/^[-*+]\s+(.+)$/)
+                          const bulletContent = bulletMatch ? bulletMatch[1] : trimmedNested
+                          
+                          return (
+                            <div key={nestedIdx} className="flex items-start gap-2 ml-2">
+                              {isBullet && <span className="text-purple-400 flex-shrink-0 mt-0.5">•</span>}
+                              <span className={isBullet ? '' : 'ml-2'}>{renderFormattedText(bulletContent)}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </li>
                 )
               })}
@@ -301,7 +326,7 @@ export const FormattedResponseContent = ({ text }) => {
               textAlignLast: 'left',
               wordSpacing: '0.05em',
               letterSpacing: '0.3px',
-              lineHeight: '1.5',
+              lineHeight: '1.6',
               hyphens: 'none',
               overflowWrap: 'break-word',
               wordBreak: 'break-word'
@@ -314,7 +339,7 @@ export const FormattedResponseContent = ({ text }) => {
         // Fallback for unknown types
         return (
           <div key={idx} className="text-sm text-gray-300">
-            {JSON.stringify(item)}
+            {item.content || JSON.stringify(item)}
           </div>
         )
       })}

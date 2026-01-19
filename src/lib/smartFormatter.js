@@ -161,24 +161,43 @@ function hasNumberedList(text) {
 }
 
 /**
- * Extract numbered list items
+ * Extract numbered list items with multi-line support
  */
 function extractListItems(text) {
   const items = []
-  
-  // First try to extract from separate lines
   const lines = text.split('\n')
   
-  lines.forEach(line => {
+  let currentItem = null
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
     const trimmedLine = line.trim()
+    
+    // Check if this line starts a numbered item
     const match = trimmedLine.match(/^(\d{1,2})\.\s+(.+)$/)
+    
     if (match) {
-      items.push({
+      // Save the previous item if it exists
+      if (currentItem) {
+        items.push(currentItem)
+      }
+      
+      // Start a new item
+      currentItem = {
         number: match[1],
         content: match[2].trim()
-      })
+      }
+    } else if (currentItem && trimmedLine.length > 0) {
+      // This line belongs to the current item (nested content)
+      // Preserve the line break and indentation
+      currentItem.content += '\n' + line.trimEnd()
     }
-  })
+  }
+  
+  // Don't forget to add the last item
+  if (currentItem) {
+    items.push(currentItem)
+  }
   
   // If no items found in separate lines, try to extract from continuous paragraph
   if (items.length === 0) {

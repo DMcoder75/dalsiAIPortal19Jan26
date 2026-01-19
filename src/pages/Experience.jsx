@@ -11,7 +11,7 @@ import {
   Paperclip, Mic, Globe, Play, Image as ImageIcon, Download, Copy, ThumbsUp,
   ThumbsDown, MessageCircle, Zap, BookOpen, Code, Stethoscope, TrendingUp,
   Clock, AlertCircle, CheckCircle, Loader, X, ChevronDown, Sparkles, Crown,
-  Archive, MoreVertical, Edit3, StopCircle, Upload, DollarSign, ChevronLeft
+  Archive, MoreVertical, Edit3, StopCircle, Upload, DollarSign, ChevronLeft, User, CreditCard
 } from 'lucide-react'
 import logo from '../assets/DalSiAILogo2.png'
 import { AIModeResponseFormatter } from '../components/AIModeResponseFormatter'
@@ -66,6 +66,7 @@ export default function Experience() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768) // Hidden on mobile, visible on desktop
   const [rightSidebarOpen, setRightSidebarOpen] = useState(window.innerWidth >= 1024) // Hidden on mobile/tablet, visible on desktop
+  const [showUserMenu, setShowUserMenu] = useState(false) // User profile dropdown menu
   const [currentChat, setCurrentChat] = useState(null)
   const [messages, setMessages] = useState([])
   const [inputValue, setInputValue] = useState('')
@@ -638,7 +639,7 @@ export default function Experience() {
           <a href="/" className="flex items-center gap-3 mb-6 hover:opacity-80 transition-opacity cursor-pointer">
             <img src={logo} alt="DalSiAI" className="h-10 w-10" />
             <div>
-              <span className="text-lg font-bold text-foreground">DalSiAI</span>
+              <span className="text-lg font-bold text-purple-100">DalSiAI</span>
               <p className="text-xs text-muted-foreground">AI & Automations</p>
             </div>
           </a>
@@ -677,15 +678,21 @@ export default function Experience() {
         />
 
         {/* User Profile / Auth Section */}
-        <div className="p-4 border-t border-border">
+        <div style={{
+          borderTop: '3px solid #a855f7',
+          padding: '16px'
+        }}>
           {user ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold">
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors"
+              >
+                <div className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">
                   {user.user_metadata?.first_name?.[0]?.toUpperCase() || user.email?.[0].toUpperCase() || 'U'}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate text-foreground">{user.user_metadata?.first_name || user.email || 'User'}</p>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-sm font-semibold truncate text-purple-100">{user.user_metadata?.first_name || 'User'}</p>
                   <p className="text-xs text-muted-foreground">
                     {(() => {
                       const tier = user.subscription_tier || 'free'
@@ -699,14 +706,90 @@ export default function Experience() {
                     })()}
                   </p>
                 </div>
-              </div>
-              <button
-                onClick={logout}
-                className="w-full flex items-center justify-center gap-2 bg-muted hover:bg-muted/80 text-foreground text-sm font-medium transition-colors py-2 rounded-lg"
-              >
-                <LogOut className="w-4 h-4" />
-                Logout
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 flex-shrink-0 ${showUserMenu ? 'rotate-180' : ''}`} />
               </button>
+              
+              {showUserMenu && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: 0,
+                  right: 0,
+                  marginBottom: '8px',
+                  backgroundColor: 'rgba(88, 28, 135, 0.95)',
+                  border: '1px solid #a855f7',
+                  borderRadius: '8px',
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+                  padding: '8px 0',
+                  zIndex: 50,
+                  backdropFilter: 'blur(4px)'
+                }}>
+                  <button
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 16px',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      color: '#e9d5ff'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(168, 85, 247, 0.2)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    onClick={() => { setShowUserMenu(false); window.location.href = '/profile'; }}
+                  >
+                    <User size={16} />
+                    <span>My Profile</span>
+                  </button>
+                  <button
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 16px',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      color: '#e9d5ff'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(168, 85, 247, 0.2)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    onClick={() => { setShowUserMenu(false); window.location.href = '/billing'; }}
+                  >
+                    <CreditCard size={16} />
+                    <span>Billing & Subscription</span>
+                  </button>
+                  <div style={{
+                    borderTop: '1px solid rgba(168, 85, 247, 0.3)',
+                    margin: '4px 0'
+                  }}></div>
+                  <button
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 16px',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      color: '#f87171'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    onClick={() => { setShowUserMenu(false); logout(); }}
+                  >
+                    <LogOut size={16} />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
@@ -783,7 +866,7 @@ export default function Experience() {
           
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-1 text-center max-w-2xl">
-              <h2 className="text-4xl font-bold mb-4 text-foreground">How can I help you today?</h2>
+              <h2 className="text-4xl font-bold mb-4 text-purple-100">How can I help you today?</h2>
               <p className="text-muted-foreground text-lg mb-8">Choose a model or start typing your question</p>
 
               {/* Suggested Prompts Section */}
@@ -816,19 +899,19 @@ export default function Experience() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <button className="p-4 bg-card hover:bg-card/80 rounded-lg flex flex-col items-center gap-2 transition-colors border border-border hover:border-primary/50">
                   <Paperclip className="w-6 h-6 text-primary" />
-                  <span className="text-sm text-foreground">Attach</span>
+                  <span className="text-sm text-purple-100">Attach</span>
                 </button>
                 <button className="p-4 bg-card hover:bg-card/80 rounded-lg flex flex-col items-center gap-2 transition-colors border border-border hover:border-primary/50">
                   <Mic className="w-6 h-6 text-primary" />
-                  <span className="text-sm text-foreground">Voice</span>
+                  <span className="text-sm text-purple-100">Voice</span>
                 </button>
                 <button className="p-4 bg-card hover:bg-card/80 rounded-lg flex flex-col items-center gap-2 transition-colors border border-border hover:border-primary/50">
                   <Globe className="w-6 h-6 text-primary" />
-                  <span className="text-sm text-foreground">Web Search</span>
+                  <span className="text-sm text-purple-100">Web Search</span>
                 </button>
                 <button className="p-4 bg-card hover:bg-card/80 rounded-lg flex flex-col items-center gap-2 transition-colors border border-border hover:border-primary/50">
                   <ImageIcon className="w-6 h-6 text-primary" />
-                  <span className="text-sm text-foreground">Image</span>
+                  <span className="text-sm text-purple-100">Image</span>
                 </button>
               </div>
             </div>
@@ -906,7 +989,7 @@ export default function Experience() {
               <div className="mb-4 p-4 bg-primary/10 border border-primary/30 rounded-lg flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-foreground">Guest: {guestMessageCount}/{guestLimit} messages</p>
+                  <p className="text-sm font-medium text-purple-100">Guest: {guestMessageCount}/{guestLimit} messages</p>
                   <p className="text-xs text-muted-foreground">Sign in to get unlimited messages</p>
                 </div>
               </div>
@@ -945,7 +1028,7 @@ export default function Experience() {
       {/* Right Sidebar */}
       <div className={`${rightSidebarOpen ? 'w-64' : 'w-0'} bg-card border-l border-border flex flex-col transition-all duration-300 overflow-hidden hidden lg:flex`}>
         <div className="p-6 border-b border-border flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-foreground">Quick Actions</h3>
+          <h3 className="text-lg font-semibold text-purple-100">Quick Actions</h3>
           <button
             onClick={() => setRightSidebarOpen(false)}
             className="lg:hidden p-2 hover:bg-muted rounded-lg transition-colors"
@@ -995,7 +1078,7 @@ export default function Experience() {
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{integration.icon}</span>
                       <div>
-                        <p className="text-sm font-medium text-foreground">{integration.name}</p>
+                        <p className="text-sm font-medium text-purple-100">{integration.name}</p>
                         <p className="text-xs text-muted-foreground">
                           {integration.connected ? (
                             <span className="text-green-500">Connected</span>
