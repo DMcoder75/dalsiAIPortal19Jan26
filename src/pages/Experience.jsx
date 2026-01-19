@@ -716,7 +716,7 @@ export default function Experience() {
                   left: 0,
                   right: 0,
                   marginBottom: '8px',
-                  backgroundColor: 'rgba(88, 28, 135, 0.95)',
+                  backgroundColor: 'rgba(15, 23, 42, 0.98)',
                   border: '1px solid #a855f7',
                   borderRadius: '8px',
                   boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
