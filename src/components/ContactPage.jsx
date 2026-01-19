@@ -46,18 +46,6 @@ export default function ContactPage() {
       description: 'Send us an email anytime'
     },
     {
-      icon: Phone,
-      title: 'Call Us',
-      details: ['+1 (555) 123-4567', '+1 (555) 987-6543'],
-      description: 'Mon-Fri 9AM-6PM PST'
-    },
-    {
-      icon: MapPin,
-      title: 'Visit Us',
-      details: ['123 AI Innovation Drive', 'San Francisco, CA 94105'],
-      description: 'Our headquarters'
-    },
-    {
       icon: Clock,
       title: 'Business Hours',
       details: ['Monday - Friday: 9AM - 6PM', 'Saturday: 10AM - 4PM'],
