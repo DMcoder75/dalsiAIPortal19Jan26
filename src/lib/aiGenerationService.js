@@ -18,6 +18,48 @@ const API_BASE_URL = 'https://api.neodalsi.com'
 const conversationEndpoints = new Map()
 
 /**
+ * Detect if a prompt is detailed/complex and should get longer response
+ * Only applies to logged-in users
+ * @param {string} message - User prompt
+ * @param {boolean} isLoggedIn - Whether user is logged in
+ * @returns {string} 'long' for detailed prompts, 'medium' for regular
+ */
+const detectDetailLevel = (message, isLoggedIn = false) => {
+  // Only apply detail detection for logged-in users
+  if (!isLoggedIn) {
+    return 'medium'
+  }
+
+  const wordCount = message.trim().split(/\s+/).length
+  const questionCount = (message.match(/\?/g) || []).length
+  const hasNumbers = /\d+/.test(message)
+  const hasComplexTerms = /\b(calculate|plan|analyze|strategy|breakdown|detailed|comprehensive|explain|guide|how|why|financial|investment|loan|interest|return)\b/i.test(message)
+  
+  // Criteria for detailed prompt:
+  // 1. More than 50 words
+  // 2. Multiple questions (2+)
+  // 3. Contains numbers (indicating specific data)
+  // 4. Contains complex/financial terms
+  const isDetailed = (
+    (wordCount > 50) ||
+    (questionCount >= 2) ||
+    (hasNumbers && hasComplexTerms) ||
+    (message.length > 300)
+  )
+
+  logger.debug(`📊 [DETAIL_DETECTION] Prompt analysis:`, {
+    wordCount,
+    questionCount,
+    hasNumbers,
+    hasComplexTerms,
+    isDetailed,
+    responseLength: isDetailed ? 'long' : 'medium'
+  })
+
+  return isDetailed ? 'long' : 'medium'
+}
+
+/**
  * Build headers for API request
  * @param {Object} authKey - { type: 'bearer'|'api-key', value: string }
  * @returns {Object} Headers object
@@ -47,7 +89,9 @@ export const generateAIResponse = async (message, options = {}) => {
     mode = 'chat',
     use_history = true,
     session_id = null,
-    stream = false
+    stream = false,
+    response_length = 'medium',
+    isLoggedIn = false
   } = options
 
   try {
@@ -64,6 +108,7 @@ export const generateAIResponse = async (message, options = {}) => {
       message,
       mode,
       use_history,
+      response_length,
       ...(session_id && { session_id }),
       ...(options.chat_id && { chat_id: options.chat_id })
     }
@@ -368,8 +413,12 @@ const getConversationEndpoint = (sessionId, detectedType) => {
  * @returns {Promise<Object>} AI response
  */
 export const smartGenerate = async (message, options = {}) => {
-  const { autoDetect = true, forceEndpoint = null, ...otherOptions } = options
+  const { autoDetect = true, forceEndpoint = null, isLoggedIn = false, ...otherOptions } = options
   const { session_id } = otherOptions
+  
+  // Auto-detect detail level for logged-in users
+  const detectedDetailLevel = detectDetailLevel(message, isLoggedIn)
+  otherOptions.response_length = detectedDetailLevel
 
   try {
     let queryType = 'general'

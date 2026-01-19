@@ -406,7 +406,8 @@ export default function Experience() {
           session_id: sessionId,
           autoDetect: shouldAutoDetect,
           forceEndpoint: conversationEndpoint,
-          chat_id: storedChatId
+          chat_id: storedChatId,
+          isLoggedIn: !!user
         })
       } catch (apiError) {
         logger.error('❌ [EXPERIENCE] API error:', apiError)
