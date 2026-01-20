@@ -247,35 +247,47 @@ export function detectComplexity(query, isLoggedIn = false) {
 }
 
 /**
+ * Map complexity level to backend response_length preset
+ */
+export function mapComplexityToResponseLength(complexityLevel, isGuest = false) {
+  // Guest users always get medium (512 tokens)
+  if (isGuest) {
+    return 'medium';
+  }
+
+  // Map complexity levels to backend presets
+  switch (complexityLevel) {
+    case 'very_complex':
+      return 'detailed';  // 2048 tokens
+    case 'complex':
+      return 'detailed';  // 2048 tokens
+    case 'medium':
+      return 'long';      // 1024 tokens
+    case 'slightly_complex':
+      return 'long';      // 1024 tokens
+    case 'guest_limited':
+      return 'medium';    // 512 tokens
+    default:
+      return 'medium';    // 512 tokens (default)
+  }
+}
+
+/**
  * Get recommended generation parameters based on complexity
- * @param {string} query - User query
- * @param {boolean} isLoggedIn - Whether user is authenticated
  */
 export function getGenerationParams(query, isLoggedIn = false) {
   const complexity = detectComplexity(query, isLoggedIn);
+  const isGuest = !isLoggedIn;
 
-  // Base parameters
-  const params = {
-    enable_eos: true,
-    min_new_tokens: 30,
-    repetition_penalty: 1.1,
-    temperature: 0.7,
-    top_p: 0.9
-  };
-
-  // Adjust based on complexity
-  params.max_new_tokens = complexity.max_tokens;
-
-  // For very complex queries, reduce temperature for more focused responses
-  if (complexity.level === 'very_complex' || complexity.level === 'complex') {
-    params.temperature = 0.6;
-    params.repetition_penalty = 1.2;
-  }
+  // Map complexity to backend preset
+  const response_length = mapComplexityToResponseLength(complexity.level, isGuest);
 
   return {
-    ...params,
+    response_length,  // Backend preset: short, medium, long, detailed
     complexity_level: complexity.level,
-    complexity_score: complexity.score
+    complexity_score: complexity.score,
+    is_guest: isGuest,
+    is_authenticated: isLoggedIn
   };
 }
 

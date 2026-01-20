@@ -32,27 +32,30 @@ const detectDetailLevel = (message, isLoggedIn = false) => {
   // Log complexity analysis for debugging
   logComplexityAnalysis(message, isLoggedIn)
   
-  // Map complexity level to response_length for backward compatibility
+  // Map complexity to backend preset
+  // Backend presets: short (256), medium (512), long (1024), detailed (2048)
   let response_length = 'medium'
   if (complexity.level === 'very_complex' || complexity.level === 'complex') {
-    response_length = 'long'
+    response_length = 'detailed'  // 2048 tokens
+  } else if (complexity.level === 'medium') {
+    response_length = 'long'      // 1024 tokens
   } else if (complexity.level === 'slightly_complex') {
-    response_length = 'medium'
+    response_length = 'long'      // 1024 tokens
+  } else if (complexity.level === 'guest_limited') {
+    response_length = 'medium'    // 512 tokens
   } else {
-    response_length = 'medium'
+    response_length = 'medium'    // 512 tokens (default)
   }
 
   logger.info(`📊 [DETAIL_DETECTION] Complexity analysis:`, {
     level: complexity.level,
     score: complexity.score,
-    max_tokens: complexity.max_tokens,
     response_length,
     factors: complexity.factors
   })
 
   return {
     response_length,
-    max_tokens: complexity.max_tokens,
     complexity_level: complexity.level,
     complexity_score: complexity.score
   }
@@ -110,7 +113,6 @@ export const generateAIResponse = async (message, options = {}) => {
       response_length,
       ...(session_id && { session_id }),
       ...(options.chat_id && { chat_id: options.chat_id }),
-      ...(options.max_tokens && { max_tokens: options.max_tokens }),
       ...(options.complexity_level && { complexity_level: options.complexity_level })
     }
 
@@ -185,7 +187,7 @@ export const generateHealthcareResponse = async (message, options = {}) => {
       use_history,
       ...(session_id && { session_id }),
       ...(options.chat_id && { chat_id: options.chat_id }),
-      ...(options.max_tokens && { max_tokens: options.max_tokens }),
+      ...(options.response_length && { response_length: options.response_length }),
       ...(options.complexity_level && { complexity_level: options.complexity_level })
     }
 
@@ -258,7 +260,7 @@ export const generateEducationResponse = async (message, options = {}) => {
       use_history,
       ...(session_id && { session_id }),
       ...(options.chat_id && { chat_id: options.chat_id }),
-      ...(options.max_tokens && { max_tokens: options.max_tokens }),
+      ...(options.response_length && { response_length: options.response_length }),
       ...(options.complexity_level && { complexity_level: options.complexity_level })
     }
     logger.debug('📤 [AI_SERVICE] Education request body:', body)
@@ -424,7 +426,6 @@ export const smartGenerate = async (message, options = {}) => {
   // Auto-detect detail level using intelligent complexity detection
   const detailedAnalysis = detectDetailLevel(message, isLoggedIn)
   otherOptions.response_length = detailedAnalysis.response_length
-  otherOptions.max_tokens = detailedAnalysis.max_tokens
   otherOptions.complexity_level = detailedAnalysis.complexity_level
   otherOptions.complexity_score = detailedAnalysis.complexity_score
 
