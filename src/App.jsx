@@ -6,6 +6,12 @@ import { AdminAuthProvider } from './contexts/AdminAuthContext'
 import logger from './lib/logger'
 import DebugPanel from './components/DebugPanel'
 
+// Redirect from www to non-www domain for consistent OAuth URIs
+if (typeof window !== 'undefined' && window.location.hostname === 'www.neodalsi.com') {
+  const newUrl = 'https://neodalsi.com' + window.location.pathname + window.location.search + window.location.hash
+  window.location.href = newUrl
+}
+
 // Initialize logger on app start
 logger.info('🚀 Application started at', new Date().toISOString())
 logger.info('📍 Initial URL:', window.location.href)
