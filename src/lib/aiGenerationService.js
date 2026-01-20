@@ -26,11 +26,11 @@ const conversationEndpoints = new Map()
  * @returns {Object} { response_length: string, max_tokens: number, complexity_level: string }
  */
 const detectDetailLevel = (message, isLoggedIn = false) => {
-  // Use intelligent complexity detector
-  const complexity = detectComplexity(message)
+  // Use intelligent complexity detector with authentication status
+  const complexity = detectComplexity(message, isLoggedIn)
   
   // Log complexity analysis for debugging
-  logComplexityAnalysis(message)
+  logComplexityAnalysis(message, isLoggedIn)
   
   // Map complexity level to response_length for backward compatibility
   let response_length = 'medium'
@@ -109,7 +109,9 @@ export const generateAIResponse = async (message, options = {}) => {
       use_history,
       response_length,
       ...(session_id && { session_id }),
-      ...(options.chat_id && { chat_id: options.chat_id })
+      ...(options.chat_id && { chat_id: options.chat_id }),
+      ...(options.max_tokens && { max_tokens: options.max_tokens }),
+      ...(options.complexity_level && { complexity_level: options.complexity_level })
     }
 
     logger.debug('📤 [AI_SERVICE] Request body:', body)
@@ -182,7 +184,9 @@ export const generateHealthcareResponse = async (message, options = {}) => {
       mode,
       use_history,
       ...(session_id && { session_id }),
-      ...(options.chat_id && { chat_id: options.chat_id })
+      ...(options.chat_id && { chat_id: options.chat_id }),
+      ...(options.max_tokens && { max_tokens: options.max_tokens }),
+      ...(options.complexity_level && { complexity_level: options.complexity_level })
     }
 
     logger.debug('📤 [AI_SERVICE] Healthcare request body:', body)
@@ -253,7 +257,9 @@ export const generateEducationResponse = async (message, options = {}) => {
       mode,
       use_history,
       ...(session_id && { session_id }),
-      ...(options.chat_id && { chat_id: options.chat_id })
+      ...(options.chat_id && { chat_id: options.chat_id }),
+      ...(options.max_tokens && { max_tokens: options.max_tokens }),
+      ...(options.complexity_level && { complexity_level: options.complexity_level })
     }
     logger.debug('📤 [AI_SERVICE] Education request body:', body)
 

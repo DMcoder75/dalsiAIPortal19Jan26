@@ -109,14 +109,30 @@ function hasMathExpressions(text) {
 /**
  * Main complexity detection function
  * Returns complexity level and recommended token limit
+ * @param {string} query - User query
+ * @param {boolean} isLoggedIn - Whether user is authenticated (default: false)
+ * @returns {Object} Complexity analysis with token limits
  */
-export function detectComplexity(query) {
+export function detectComplexity(query, isLoggedIn = false) {
   if (!query || typeof query !== 'string') {
     return {
       level: 'simple',
       score: 0,
       max_tokens: 512,
-      factors: []
+      factors: [],
+      is_guest: !isLoggedIn
+    };
+  }
+
+  // CRITICAL: Guest users always get 512 tokens max to prevent server overload
+  // Complex queries are only allowed for authenticated users
+  if (!isLoggedIn) {
+    return {
+      level: 'guest_limited',
+      score: 0,
+      max_tokens: 512,
+      factors: ['Guest user - limited to 512 tokens'],
+      is_guest: true
     };
   }
 
@@ -224,15 +240,19 @@ export function detectComplexity(query) {
     financialKeywordCount,
     mathKeywordCount,
     analysisKeywordCount,
-    listItemCount
+    listItemCount,
+    is_guest: !isLoggedIn,
+    is_authenticated: isLoggedIn
   };
 }
 
 /**
  * Get recommended generation parameters based on complexity
+ * @param {string} query - User query
+ * @param {boolean} isLoggedIn - Whether user is authenticated
  */
-export function getGenerationParams(query) {
-  const complexity = detectComplexity(query);
+export function getGenerationParams(query, isLoggedIn = false) {
+  const complexity = detectComplexity(query, isLoggedIn);
 
   // Base parameters
   const params = {
@@ -261,13 +281,17 @@ export function getGenerationParams(query) {
 
 /**
  * Log complexity analysis for debugging
+ * @param {string} query - User query
+ * @param {boolean} isLoggedIn - Whether user is authenticated
  */
-export function logComplexityAnalysis(query) {
-  const analysis = detectComplexity(query);
+export function logComplexityAnalysis(query, isLoggedIn = false) {
+  const analysis = detectComplexity(query, isLoggedIn);
   console.log('[COMPLEXITY_DETECTOR]', {
     level: analysis.level,
     score: analysis.score,
     max_tokens: analysis.max_tokens,
+    is_guest: analysis.is_guest,
+    is_authenticated: analysis.is_authenticated,
     factors: analysis.factors,
     metrics: {
       words: analysis.wordCount,
