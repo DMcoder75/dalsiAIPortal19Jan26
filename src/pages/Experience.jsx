@@ -946,7 +946,7 @@ export default function Experience() {
                             navigator.clipboard.writeText(msg.content)
                             console.log('Copied to clipboard')
                           }}
-                          className="absolute bottom-0 right-0 p-1.5 rounded opacity-0 hover:opacity-100 transition-opacity bg-primary-foreground/10 hover:bg-primary-foreground/20"
+                          className="absolute bottom-0 right-0 p-1.5 rounded opacity-50 hover:opacity-100 transition-opacity bg-primary-foreground/10 hover:bg-primary-foreground/20"
                           title="Copy message"
                         >
                           <svg className="w-4 h-4 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
