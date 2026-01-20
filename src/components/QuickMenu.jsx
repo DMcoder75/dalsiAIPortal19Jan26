@@ -26,7 +26,7 @@ export default function QuickMenu() {
  { icon: Brain, label: 'AI Solutions', href: '#solutions', color: 'text-accent' },
  { icon: Stethoscope, label: 'Healthcare', href: '#healthcare', color: 'text-destructive' },
  { icon: GraduationCap, label: 'Education', href: '#education', color: 'text-chart-4' },
- { icon: MessageSquare, label: 'Experience Dalsi', href: '/chat', color: 'text-primary', special: true },
+ { icon: MessageSquare, label: 'Experience Dalsi', href: '/experience', color: 'text-primary', special: true },
  { icon: User, label: 'About Us', href: '/about', color: 'text-muted-foreground' },
  { icon: Phone, label: 'Contact', href: '/contact', color: 'text-muted-foreground' },
  { icon: FileText, label: 'Documentation', href: '/docs', color: 'text-muted-foreground' },

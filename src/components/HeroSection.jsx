@@ -71,7 +71,7 @@ export default function HeroSection() {
    <Button 
     size="lg" 
     className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-primary/25 group w-full sm:w-auto text-white"
-    onClick={() => window.location.href = '/chat'}
+    onClick={() => window.location.href = '/experience'}
    >
     <span className="group-hover:animate-pulse">Experience Dalsi AI</span>
     <ArrowRight className="ml-2 h-4 sm:h-5 w-4 sm:w-5 group-hover:translate-x-1 transition-transform" />
