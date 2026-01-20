@@ -11,6 +11,7 @@
 
 import logger from './logger'
 import { getApiKeyForRequest } from './authService'
+import { detectComplexity, getGenerationParams, logComplexityAnalysis } from './complexityDetector'
 
 const API_BASE_URL = 'https://api.neodalsi.com'
 
@@ -19,44 +20,42 @@ const conversationEndpoints = new Map()
 
 /**
  * Detect if a prompt is detailed/complex and should get longer response
- * Only applies to logged-in users
+ * Uses intelligent complexity detection system
  * @param {string} message - User prompt
  * @param {boolean} isLoggedIn - Whether user is logged in
- * @returns {string} 'long' for detailed prompts, 'medium' for regular
+ * @returns {Object} { response_length: string, max_tokens: number, complexity_level: string }
  */
 const detectDetailLevel = (message, isLoggedIn = false) => {
-  // Only apply detail detection for logged-in users
-  if (!isLoggedIn) {
-    return 'medium'
+  // Use intelligent complexity detector
+  const complexity = detectComplexity(message)
+  
+  // Log complexity analysis for debugging
+  logComplexityAnalysis(message)
+  
+  // Map complexity level to response_length for backward compatibility
+  let response_length = 'medium'
+  if (complexity.level === 'very_complex' || complexity.level === 'complex') {
+    response_length = 'long'
+  } else if (complexity.level === 'slightly_complex') {
+    response_length = 'medium'
+  } else {
+    response_length = 'medium'
   }
 
-  const wordCount = message.trim().split(/\s+/).length
-  const questionCount = (message.match(/\?/g) || []).length
-  const hasNumbers = /\d+/.test(message)
-  const hasComplexTerms = /\b(calculate|plan|analyze|strategy|breakdown|detailed|comprehensive|explain|guide|how|why|financial|investment|loan|interest|return)\b/i.test(message)
-  
-  // Criteria for detailed prompt:
-  // 1. More than 50 words
-  // 2. Multiple questions (2+)
-  // 3. Contains numbers (indicating specific data)
-  // 4. Contains complex/financial terms
-  const isDetailed = (
-    (wordCount > 50) ||
-    (questionCount >= 2) ||
-    (hasNumbers && hasComplexTerms) ||
-    (message.length > 300)
-  )
-
-  logger.debug(`📊 [DETAIL_DETECTION] Prompt analysis:`, {
-    wordCount,
-    questionCount,
-    hasNumbers,
-    hasComplexTerms,
-    isDetailed,
-    responseLength: isDetailed ? 'long' : 'medium'
+  logger.info(`📊 [DETAIL_DETECTION] Complexity analysis:`, {
+    level: complexity.level,
+    score: complexity.score,
+    max_tokens: complexity.max_tokens,
+    response_length,
+    factors: complexity.factors
   })
 
-  return isDetailed ? 'long' : 'medium'
+  return {
+    response_length,
+    max_tokens: complexity.max_tokens,
+    complexity_level: complexity.level,
+    complexity_score: complexity.score
+  }
 }
 
 /**
@@ -416,9 +415,12 @@ export const smartGenerate = async (message, options = {}) => {
   const { autoDetect = true, forceEndpoint = null, isLoggedIn = false, ...otherOptions } = options
   const { session_id } = otherOptions
   
-  // Auto-detect detail level for logged-in users
-  const detectedDetailLevel = detectDetailLevel(message, isLoggedIn)
-  otherOptions.response_length = detectedDetailLevel
+  // Auto-detect detail level using intelligent complexity detection
+  const detailedAnalysis = detectDetailLevel(message, isLoggedIn)
+  otherOptions.response_length = detailedAnalysis.response_length
+  otherOptions.max_tokens = detailedAnalysis.max_tokens
+  otherOptions.complexity_level = detailedAnalysis.complexity_level
+  otherOptions.complexity_score = detailedAnalysis.complexity_score
 
   try {
     let queryType = 'general'
