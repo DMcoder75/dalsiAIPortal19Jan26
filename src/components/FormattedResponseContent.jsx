@@ -81,13 +81,31 @@ const replaceLatexSymbols = (text) => {
 }
 
 /**
+ * Fix malformed markdown where list items are concatenated
+ */
+const fixConcatenatedListItems = (text) => {
+  if (!text || typeof text !== 'string') return text
+  
+  // Fix: ". 2. **" → ".\n\n2. **" (numbered list items on same line)
+  text = text.replace(/([.!?])\s+(\d+)\.\s+\*\*/g, '$1\n\n$2. **')
+  
+  // Fix: "- text. 2. **" → "- text.\n\n2. **"
+  text = text.replace(/(-\s+[^\n]*)\.\s+(\d+)\.\s+\*\*/g, '$1.\n\n$2. **')
+  
+  return text
+}
+
+/**
  * Parse response text and render as formatted React components with Markdown + Math
  */
 export const FormattedResponseContent = ({ text }) => {
   if (!text || typeof text !== 'string') return <p className="text-sm text-white">{text}</p>
 
+  // Fix concatenated list items FIRST
+  let processedText = fixConcatenatedListItems(text)
+  
   // Replace LaTeX symbols BEFORE markdown parsing
-  const processedText = replaceLatexSymbols(text)
+  processedText = replaceLatexSymbols(processedText)
 
   return (
     <div className="space-y-4 text-white">
