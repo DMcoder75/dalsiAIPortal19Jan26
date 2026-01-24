@@ -59,7 +59,7 @@ export default function ConversationMenu({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-1 w-40 bg-popover border border-border rounded-lg shadow-lg z-50">
+        <div className="absolute right-0 mt-1 w-40 bg-slate-900 border border-border rounded-lg shadow-lg z-50">
           {/* Edit Option */}
           <button
             onClick={handleEdit}
