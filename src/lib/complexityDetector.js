@@ -256,19 +256,22 @@ export function mapComplexityToResponseLength(complexityLevel, isGuest = false) 
   }
 
   // Map complexity levels to backend presets
+  // UPDATED: Increase token allocation to prevent truncation
   switch (complexityLevel) {
     case 'very_complex':
       return 'detailed';  // 2048 tokens
     case 'complex':
       return 'detailed';  // 2048 tokens
     case 'medium':
-      return 'long';      // 1024 tokens
+      return 'detailed';  // 2048 tokens (upgraded from 'long')
     case 'slightly_complex':
       return 'long';      // 1024 tokens
+    case 'simple':
+      return 'long';      // 1024 tokens (upgraded from 'medium')
     case 'guest_limited':
       return 'medium';    // 512 tokens
     default:
-      return 'medium';    // 512 tokens (default)
+      return 'long';      // 1024 tokens (upgraded from 'medium')
   }
 }
 
