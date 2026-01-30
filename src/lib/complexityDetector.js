@@ -313,22 +313,23 @@ export function mapComplexityToResponseLength(complexityLevel, isGuest = false) 
   }
 
   // Map complexity levels to backend presets
-  // UPDATED: Increase token allocation to prevent truncation
+  // UPDATED: Aggressive token allocation for planning queries
+  // All authenticated users get minimum 2048 tokens for planning queries
   switch (complexityLevel) {
     case 'very_complex':
       return 'detailed';  // 2048 tokens
     case 'complex':
       return 'detailed';  // 2048 tokens
     case 'medium':
-      return 'detailed';  // 2048 tokens (upgraded from 'long')
+      return 'detailed';  // 2048 tokens
     case 'slightly_complex':
-      return 'long';      // 1024 tokens
+      return 'detailed';  // 2048 tokens (UPGRADED from 'long')
     case 'simple':
-      return 'long';      // 1024 tokens (upgraded from 'medium')
+      return 'detailed';  // 2048 tokens (UPGRADED from 'long')
     case 'guest_limited':
-      return 'medium';    // 512 tokens
+      return 'medium';    // 512 tokens (guests protected)
     default:
-      return 'long';      // 1024 tokens (upgraded from 'medium')
+      return 'detailed';  // 2048 tokens (UPGRADED from 'long')
   }
 }
 
