@@ -26,6 +26,22 @@ const ANALYSIS_KEYWORDS = [
   'strategy', 'roadmap', 'guide', 'tutorial', 'walkthrough'
 ];
 
+// Planning and itinerary keywords
+const PLANNING_KEYWORDS = [
+  'itinerary', 'itinary', 'road trip', 'trip', 'journey', 'route',
+  'stops', 'stopover', 'destination', 'travel', 'tour', 'schedule',
+  'agenda', 'suggest', 'recommend', 'places', 'attractions',
+  'accommodation', 'hotel', 'restaurant', 'cafe', 'refreshment',
+  'visit', 'explore', 'discover', 'day trip', 'vacation', 'holiday',
+  'itinerary', 'itinerary planning', 'travel plan', 'trip plan'
+];
+
+// Location and geography keywords
+const LOCATION_KEYWORDS = [
+  'from', 'to', 'between', 'via', 'through', 'across',
+  'destination', 'location', 'city', 'town', 'country', 'region'
+];
+
 // Complex query indicators
 const COMPLEXITY_INDICATORS = {
   // Query length thresholds
@@ -87,6 +103,25 @@ function countKeywords(text, keywords) {
     if (matches) count += matches.length;
   });
   return count;
+}
+
+/**
+ * Detect multi-location travel queries (from X to Y pattern)
+ */
+function detectMultipleLocations(text) {
+  const lowerText = text.toLowerCase();
+  // Pattern: "from [location] to [location]"
+  const multiLocationPattern = /from\s+\w+\s+to\s+\w+/gi;
+  return multiLocationPattern.test(lowerText);
+}
+
+/**
+ * Detect structured output requests (lists, itineraries, schedules)
+ */
+function detectStructuredOutput(text) {
+  const lowerText = text.toLowerCase();
+  const structuredKeywords = ['list', 'itinerary', 'schedule', 'steps', 'stages', 'breakdown', 'outline', 'summary', 'plan'];
+  return structuredKeywords.some(keyword => new RegExp(`\\b${keyword}\\b`, 'i').test(lowerText));
 }
 
 /**
@@ -211,6 +246,25 @@ export function detectComplexity(query, isLoggedIn = false) {
     factors.push(`Contains mathematical expressions`);
   }
 
+  // 9. Planning/Itinerary keywords
+  const planningKeywordCount = countKeywords(query, PLANNING_KEYWORDS);
+  if (planningKeywordCount > 0) {
+    complexityScore += 3;
+    factors.push(`Planning/itinerary query detected (${planningKeywordCount} keywords)`);
+  }
+
+  // 10. Multi-location travel queries
+  if (detectMultipleLocations(query)) {
+    complexityScore += 2;
+    factors.push(`Multi-location travel query detected`);
+  }
+
+  // 11. Structured output requests
+  if (detectStructuredOutput(query)) {
+    complexityScore += 1;
+    factors.push(`Structured output requested`);
+  }
+
   // Determine complexity level and token limit
   let level = 'simple';
   let max_tokens = 512;
@@ -241,6 +295,9 @@ export function detectComplexity(query, isLoggedIn = false) {
     mathKeywordCount,
     analysisKeywordCount,
     listItemCount,
+    planningKeywordCount,
+    hasMultipleLocations: detectMultipleLocations(query),
+    hasStructuredOutput: detectStructuredOutput(query),
     is_guest: !isLoggedIn,
     is_authenticated: isLoggedIn
   };
