@@ -53,6 +53,18 @@ const BUSINESS_KEYWORDS = [
   'best practices', 'trends', 'opportunities', 'risks', 'analysis'
 ];
 
+// Healthcare and medical keywords
+const HEALTHCARE_KEYWORDS = [
+  'medical', 'medicine', 'drug', 'medication', 'ointment', 'cream',
+  'treatment', 'therapy', 'disease', 'symptom', 'diagnosis',
+  'prescription', 'dosage', 'side effect', 'contraindication',
+  'health', 'healthcare', 'clinical', 'patient', 'doctor',
+  'usage', 'application', 'precaution', 'warning', 'allergy',
+  'tablet', 'capsule', 'injection', 'vaccine', 'antibiotic',
+  'pain relief', 'infection', 'wound', 'skin', 'dermatology',
+  'pharmaceutical', 'remedy', 'cure', 'relief', 'healing'
+];
+
 // Complex query indicators
 const COMPLEXITY_INDICATORS = {
   // Query length thresholds
@@ -285,6 +297,18 @@ export function detectComplexity(query, isLoggedIn = false) {
     complexityScore += 2;
     factors.push(`Business context detected`);
   } else if (businessKeywordCount > 0) {
+    complexityScore += 1;
+  }
+
+  // 13. Healthcare and medical keywords
+  const healthcareKeywordCount = countKeywords(query, HEALTHCARE_KEYWORDS);
+  if (healthcareKeywordCount > 3) {
+    complexityScore += 3;
+    factors.push(`Medical/healthcare query (${healthcareKeywordCount} keywords)`);
+  } else if (healthcareKeywordCount > 1) {
+    complexityScore += 2;
+    factors.push(`Healthcare context detected`);
+  } else if (healthcareKeywordCount > 0) {
     complexityScore += 1;
   }
 
