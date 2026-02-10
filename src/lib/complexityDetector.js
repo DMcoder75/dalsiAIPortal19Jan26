@@ -42,6 +42,17 @@ const LOCATION_KEYWORDS = [
   'destination', 'location', 'city', 'town', 'country', 'region'
 ];
 
+// Business and industry keywords
+const BUSINESS_KEYWORDS = [
+  'industry', 'business', 'challenges', 'problems', 'solutions',
+  'market', 'competitive', 'competition', 'strategy', 'approach',
+  'sector', 'company', 'enterprise', 'organization', 'startup',
+  'growth', 'scalability', 'revenue', 'customer', 'client',
+  'service', 'product', 'innovation', 'technology', 'digital',
+  'transformation', 'implementation', 'framework', 'model',
+  'best practices', 'trends', 'opportunities', 'risks', 'analysis'
+];
+
 // Complex query indicators
 const COMPLEXITY_INDICATORS = {
   // Query length thresholds
@@ -263,6 +274,18 @@ export function detectComplexity(query, isLoggedIn = false) {
   if (detectStructuredOutput(query)) {
     complexityScore += 1;
     factors.push(`Structured output requested`);
+  }
+
+  // 12. Business and industry keywords
+  const businessKeywordCount = countKeywords(query, BUSINESS_KEYWORDS);
+  if (businessKeywordCount > 4) {
+    complexityScore += 3;
+    factors.push(`Business analysis query (${businessKeywordCount} keywords)`);
+  } else if (businessKeywordCount > 2) {
+    complexityScore += 2;
+    factors.push(`Business context detected`);
+  } else if (businessKeywordCount > 0) {
+    complexityScore += 1;
   }
 
   // Determine complexity level and token limit
