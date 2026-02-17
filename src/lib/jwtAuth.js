@@ -25,7 +25,6 @@ const API_BASE_URL = 'https://api.neodalsi.com';
  */
 export const loginWithJWT = async (email, password) => {
   try {
-    console.log('🔐 Logging in with JWT...');
     
     const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
       method: 'POST',
@@ -46,13 +45,8 @@ export const loginWithJWT = async (email, password) => {
       firstNameValue: data.user?.first_name
     }));
     
-    console.log('📥 [JWT_AUTH] Full API response:', data);
-    console.log('📥 [JWT_AUTH] User object from API:', data.user);
-    console.log('📥 [JWT_AUTH] Has first_name:', !!data.user?.first_name);
-    console.log('📥 [JWT_AUTH] First name value:', data.user?.first_name);
 
     if (!response.ok) {
-      console.error('❌ Login failed:', data);
       throw new Error(data.error || 'Login failed');
     }
 
@@ -60,12 +54,9 @@ export const loginWithJWT = async (email, password) => {
       throw new Error('Invalid response from server');
     }
 
-    console.log('✅ Login successful');
     
-    console.log('💾 [JWT_AUTH] Storing user_info:', JSON.stringify(data.user));
     // Store JWT token in localStorage
     localStorage.setItem('jwt_token', data.token);
-    console.log('✅ [JWT_AUTH] Verified stored:', localStorage.getItem('user_info'));
     localStorage.setItem('user_info', JSON.stringify(data.user));
 
     return {
@@ -75,7 +66,6 @@ export const loginWithJWT = async (email, password) => {
     };
 
   } catch (error) {
-    console.error('❌ JWT login error:', error);
     throw error;
   }
 };
@@ -91,11 +81,8 @@ export const verifyJWT = async (token = null) => {
     const jwtToken = token || localStorage.getItem('jwt_token');
     
     if (!jwtToken) {
-      console.warn('⚠️ No JWT token found');
       return { valid: false, user: null };
     }
-
-    console.log('🔍 Verifying JWT token...');
 
     const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
       method: 'POST',
@@ -108,23 +95,19 @@ export const verifyJWT = async (token = null) => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('❌ Token verification failed:', data);
       return { valid: false, user: null };
     }
 
     if (!data.valid) {
-      console.warn('⚠️ Token is invalid');
       return { valid: false, user: null };
     }
 
-    console.log('✅ Token is valid');
     return {
       valid: true,
       user: data.user || null
     };
 
   } catch (error) {
-    console.error('❌ JWT verification error:', error);
     return { valid: false, user: null };
   }
 };
@@ -139,11 +122,8 @@ export const refreshJWT = async () => {
     const currentToken = localStorage.getItem('jwt_token');
     
     if (!currentToken) {
-      console.warn('⚠️ No JWT token to refresh');
       return { success: false, error: 'No token found' };
     }
-
-    console.log('🔄 Refreshing JWT token...');
 
     const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
       method: 'POST',
@@ -156,7 +136,6 @@ export const refreshJWT = async () => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('❌ Token refresh failed:', data);
       
       // If refresh fails, clear the token
       if (response.status === 401) {
@@ -170,7 +149,6 @@ export const refreshJWT = async () => {
       throw new Error('Invalid response from server');
     }
 
-    console.log('✅ Token refreshed successfully');
     
     // Store new token
     localStorage.setItem('jwt_token', data.token);
@@ -181,7 +159,6 @@ export const refreshJWT = async () => {
     };
 
   } catch (error) {
-    console.error('❌ JWT refresh error:', error);
     throw error;
   }
 };
@@ -207,7 +184,6 @@ export const getCurrentUser = () => {
   try {
     return JSON.parse(userInfo);
   } catch (error) {
-    console.error('Error parsing user info:', error);
     return null;
   }
 };
@@ -216,7 +192,6 @@ export const getCurrentUser = () => {
  * Clear JWT token and user info (logout)
  */
 export const clearJWT = () => {
-  console.log('🗑️ Clearing JWT token and user info');
   localStorage.removeItem('jwt_token');
   localStorage.removeItem('user_info');
 };
@@ -235,7 +210,6 @@ export const isAuthenticated = () => {
  * Clears JWT token and user info
  */
 export const logoutJWT = () => {
-  console.log('👋 Logging out...');
   clearJWT();
   
   // Also clear old session-based auth if it exists
@@ -259,7 +233,6 @@ export const autoRefreshToken = async () => {
     const verification = await verifyJWT(token);
     
     if (!verification.valid) {
-      console.log('Token is invalid, cannot refresh');
       return false;
     }
 
@@ -268,7 +241,6 @@ export const autoRefreshToken = async () => {
     return true;
 
   } catch (error) {
-    console.error('Auto-refresh failed:', error);
     return false;
   }
 };
@@ -283,10 +255,8 @@ export const setupAutoRefresh = () => {
   // Refresh every 23 hours (82800000 ms)
   const REFRESH_INTERVAL = 23 * 60 * 60 * 1000;
   
-  console.log('⏰ Setting up automatic token refresh (every 23 hours)');
   
   const intervalId = setInterval(async () => {
-    console.log('⏰ Auto-refresh triggered');
     await autoRefreshToken();
   }, REFRESH_INTERVAL);
 
@@ -324,7 +294,6 @@ export const authenticatedFetch = async (url, options = {}) => {
 
     // If unauthorized, try to refresh token and retry
     if (response.status === 401) {
-      console.log('🔄 Token expired, attempting refresh...');
       
       try {
         await refreshJWT();
@@ -343,7 +312,6 @@ export const authenticatedFetch = async (url, options = {}) => {
         return retryResponse;
 
       } catch (refreshError) {
-        console.error('Token refresh failed, logging out');
         logoutJWT();
         throw new Error('Session expired. Please login again.');
       }
@@ -352,7 +320,6 @@ export const authenticatedFetch = async (url, options = {}) => {
     return response;
 
   } catch (error) {
-    console.error('Authenticated fetch error:', error);
     throw error;
   }
 };
@@ -365,11 +332,9 @@ export const authenticatedFetch = async (url, options = {}) => {
  */
 export const signupWithGmail = async () => {
   try {
-    console.log('🔐 [GMAIL_AUTH] Initiating Gmail signup...');
     
     // Get redirect URI from current domain
     const redirectUri = `${window.location.origin}/auth/gmail/callback`;
-    console.log('📍 Redirect URI:', redirectUri);
     
     // Call Gmail signup endpoint
     const response = await fetch(`${API_BASE_URL}/api/auth/gmail/signup`, {
@@ -385,17 +350,13 @@ export const signupWithGmail = async () => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('❌ Gmail signup failed:', data);
       throw new Error(data.error || 'Gmail signup failed');
     }
 
     if (!data.success || !data.auth_url) {
-      console.error('❌ Invalid response format:', data);
       throw new Error('Invalid response from server');
     }
 
-    console.log('✅ Gmail signup URL generated');
-    console.log('🔄 Redirecting to Google OAuth...');
     
     // Redirect to Gmail OAuth consent screen
     window.location.href = data.auth_url;
@@ -406,7 +367,6 @@ export const signupWithGmail = async () => {
     };
 
   } catch (error) {
-    console.error('❌ Gmail signup error:', error);
     throw error;
   }
 };
@@ -419,11 +379,9 @@ export const signupWithGmail = async () => {
  */
 export const loginWithGmail = async () => {
   try {
-    console.log('🔐 [GMAIL_AUTH] Initiating Gmail login...');
     
     // Get redirect URI from current domain
     const redirectUri = `${window.location.origin}/auth/gmail/callback`;
-    console.log('📍 Redirect URI:', redirectUri);
     
     // Call Gmail login endpoint
     const response = await fetch(`${API_BASE_URL}/api/auth/gmail/login`, {
@@ -439,17 +397,13 @@ export const loginWithGmail = async () => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('❌ Gmail login failed:', data);
       throw new Error(data.error || 'Gmail login failed');
     }
 
     if (!data.success || !data.auth_url) {
-      console.error('❌ Invalid response format:', data);
       throw new Error('Invalid response from server');
     }
 
-    console.log('✅ Gmail login URL generated');
-    console.log('🔄 Redirecting to Google OAuth...');
     
     // Redirect to Gmail OAuth consent screen
     window.location.href = data.auth_url;
@@ -460,7 +414,6 @@ export const loginWithGmail = async () => {
     };
 
   } catch (error) {
-    console.error('❌ Gmail login error:', error);
     throw error;
   }
 };
@@ -476,9 +429,6 @@ export const loginWithGmail = async () => {
  */
 export const handleGmailCallback = async (code, state) => {
   try {
-    console.log('🔐 [GMAIL_AUTH] Handling Gmail callback...');
-    console.log('📝 Code:', code ? 'present' : 'missing');
-    console.log('📝 State:', state ? 'present' : 'missing');
     
     // Validate parameters
     if (!code || !state) {
@@ -488,8 +438,6 @@ export const handleGmailCallback = async (code, state) => {
     // Get guest_session_id from localStorage for migration
     // Use dalsi_guest_session_id which is set by authService
     const guestUserId = localStorage.getItem('dalsi_guest_session_id');
-    console.log('📝 Guest Session ID:', guestUserId ? 'present' : 'not present');
-    console.log('🔍 DEBUG: Actual guest_session_id value:', guestUserId);
     
     // Store in localStorage for persistent logging
     const callbackLog = {
@@ -499,13 +447,11 @@ export const handleGmailCallback = async (code, state) => {
     localStorage.setItem('gmail_callback_log', JSON.stringify(callbackLog));
 
     // Exchange authorization code for JWT token
-    console.log('🔄 Exchanging code for JWT token...');
     const requestBody = {
       code,
       state,
       guest_user_id: guestUserId
     };
-    console.log('📶 DEBUG: Request body being sent to backend:', requestBody);
     localStorage.setItem('gmail_callback_request', JSON.stringify(requestBody));
     
     const response = await fetch(`${API_BASE_URL}/api/auth/gmail/callback`, {
@@ -517,22 +463,14 @@ export const handleGmailCallback = async (code, state) => {
     });
 
     const data = await response.json();
-    console.log('📥 DEBUG: Response from backend:', data);
-    console.log('🔍 DEBUG: Conversations migrated count:', data.conversations_migrated);
 
     if (!response.ok) {
-      console.error('❌ Gmail callback failed:', data);
       throw new Error(data.error || 'Gmail authentication failed');
     }
 
     if (!data.success || !data.token || !data.user) {
-      console.error('❌ Invalid response format:', data);
       throw new Error('Invalid response from server');
     }
-
-    console.log('✅ Gmail authentication successful');
-    console.log('📦 User data:', data.user);
-    console.log('🎁 Subscription tier:', data.user.subscription_tier);
 
     // Store JWT token and user info
     localStorage.setItem('jwt_token', data.token);
@@ -545,7 +483,6 @@ export const handleGmailCallback = async (code, state) => {
     };
 
   } catch (error) {
-    console.error('❌ Gmail callback error:', error);
     throw error;
   }
 };

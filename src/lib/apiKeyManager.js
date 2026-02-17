@@ -19,19 +19,16 @@ const apiKeyCache = new Map();
  */
 export const getUserApiKey = async (userId) => {
   if (!userId) {
-    console.warn('⚠️ No user ID provided for API key lookup');
     return null;
   }
 
   // Check cache first
   if (apiKeyCache.has(userId)) {
     const cached = apiKeyCache.get(userId);
-    console.log('✅ Using cached API key for user:', userId.substring(0, 8) + '...');
     return cached;
   }
 
   try {
-    console.log('🔍 Fetching API key for user:', userId.substring(0, 8) + '...');
     
     const { data, error } = await supabase
       .from('api_keys')
@@ -43,19 +40,15 @@ export const getUserApiKey = async (userId) => {
       .maybeSingle();
 
     if (error) {
-      console.error('❌ Error fetching API key:', error);
       return null;
     }
 
     if (!data) {
-      console.warn('⚠️ No active API key found for user:', userId.substring(0, 8) + '...');
       return null;
     }
 
     // Cache the API key
     apiKeyCache.set(userId, data);
-    console.log('✅ API key fetched and cached:', {
-      id: data.id.substring(0, 8) + '...',
       name: data.name,
       prefix: data.key_prefix
     });
@@ -63,7 +56,6 @@ export const getUserApiKey = async (userId) => {
     return data;
 
   } catch (error) {
-    console.error('❌ Unexpected error fetching API key:', error);
     return null;
   }
 };
@@ -82,13 +74,10 @@ export const getUserApiKey = async (userId) => {
  */
 export const updateApiKeyUsage = async (apiKeyId, usageData) => {
   if (!apiKeyId) {
-    console.warn('⚠️ No API key ID provided for usage update');
     return false;
   }
 
   try {
-    console.log('📊 Updating API key usage:', {
-      apiKeyId: apiKeyId.substring(0, 8) + '...',
       tokens: usageData.tokens_used,
       cost: usageData.cost_usd
     });
@@ -101,7 +90,6 @@ export const updateApiKeyUsage = async (apiKeyId, usageData) => {
       .single();
 
     if (fetchError) {
-      console.error('❌ Error fetching current API key stats:', fetchError);
       return false;
     }
 
@@ -125,20 +113,12 @@ export const updateApiKeyUsage = async (apiKeyId, usageData) => {
       .eq('id', apiKeyId);
 
     if (updateError) {
-      console.error('❌ Error updating API key usage:', updateError);
       return false;
     }
-
-    console.log('✅ API key usage updated:', {
-      requests: newTotalRequests,
-      tokens: newTotalTokens,
-      cost: newTotalCost.toFixed(6)
-    });
 
     return true;
 
   } catch (error) {
-    console.error('❌ Unexpected error updating API key usage:', error);
     return false;
   }
 };
@@ -152,10 +132,8 @@ export const updateApiKeyUsage = async (apiKeyId, usageData) => {
 export const clearApiKeyCache = (userId = null) => {
   if (userId) {
     apiKeyCache.delete(userId);
-    console.log('🗑️ Cleared API key cache for user:', userId.substring(0, 8) + '...');
   } else {
     apiKeyCache.clear();
-    console.log('🗑️ Cleared all API key cache');
   }
 };
 

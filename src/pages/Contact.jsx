@@ -19,21 +19,6 @@ export default function Contact() {
   const handleSubmit = (e) => {
     e.preventDefault()
     // Handle form submission here
-    console.log('Form submitted:', formData)
-    alert('Thank you for your message! We will get back to you soon.')
-  }
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
-  }
-
-  return (
-    <div className="min-h-screen bg-background text-foreground dark"
-         style={{
-           background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
            minHeight: '100vh'
          }}>
       <Navigation />

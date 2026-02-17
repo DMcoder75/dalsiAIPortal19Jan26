@@ -1,8 +1,11 @@
 /**
  * Centralized Logging Service
  * Captures all logs across the application and stores them in localStorage
- * Provides methods for console logging with automatic storage
+ * Console output is SUPPRESSED to prevent exposing trade secrets
+ * Logs can be exported with sanitization for safe sharing with support
  */
+
+import sanitizer from './sanitizer';
 
 const LOG_STORAGE_KEY = 'app_logs';
 const MAX_LOGS = 1000; // Maximum number of logs to store
@@ -27,7 +30,6 @@ class Logger {
       const stored = localStorage.getItem(LOG_STORAGE_KEY);
       return stored ? JSON.parse(stored) : [];
     } catch (e) {
-      console.error('Failed to load logs from localStorage:', e);
       return [];
     }
   }
@@ -41,7 +43,6 @@ class Logger {
       const logsToStore = this.logs.slice(-MAX_LOGS);
       localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(logsToStore));
     } catch (e) {
-      console.error('Failed to save logs to localStorage:', e);
     }
   }
 
@@ -74,32 +75,25 @@ class Logger {
   }
 
   /**
-   * Intercept console methods to capture all logs
+   * Intercept console methods to suppress output
+   * Logs are captured internally but NOT displayed to prevent exposing trade secrets
    */
   interceptConsole() {
-    const originalLog = console.log;
-    const originalWarn = console.warn;
-    const originalError = console.error;
-    const originalInfo = console.info;
-
+    // Suppress all console output - logs are captured internally only
     console.log = (...args) => {
       this.addLog(LOG_LEVEL.DEBUG, args, 'console.log');
-      originalLog.apply(console, args);
     };
 
     console.warn = (...args) => {
       this.addLog(LOG_LEVEL.WARN, args, 'console.warn');
-      originalWarn.apply(console, args);
     };
 
     console.error = (...args) => {
       this.addLog(LOG_LEVEL.ERROR, args, 'console.error');
-      originalError.apply(console, args);
     };
 
     console.info = (...args) => {
       this.addLog(LOG_LEVEL.INFO, args, 'console.info');
-      originalInfo.apply(console, args);
     };
   }
 
@@ -108,7 +102,6 @@ class Logger {
    */
   debug(...args) {
     this.addLog(LOG_LEVEL.DEBUG, args, 'logger.debug');
-    console.log('[DEBUG]', ...args);
   }
 
   /**
@@ -116,7 +109,6 @@ class Logger {
    */
   info(...args) {
     this.addLog(LOG_LEVEL.INFO, args, 'logger.info');
-    console.info('[INFO]', ...args);
   }
 
   /**
@@ -124,7 +116,6 @@ class Logger {
    */
   warn(...args) {
     this.addLog(LOG_LEVEL.WARN, args, 'logger.warn');
-    console.warn('[WARN]', ...args);
   }
 
   /**
@@ -132,7 +123,6 @@ class Logger {
    */
   error(...args) {
     this.addLog(LOG_LEVEL.ERROR, args, 'logger.error');
-    console.error('[ERROR]', ...args);
   }
 
   /**
@@ -141,7 +131,6 @@ class Logger {
   logWithPrefix(prefix, level, ...args) {
     const message = `[${prefix}] ${args.join(' ')}`;
     this.addLog(level, [message], `logger.${prefix}`);
-    console.log(message);
   }
 
   /**
@@ -179,27 +168,47 @@ class Logger {
   clearLogs() {
     this.logs = [];
     localStorage.removeItem(LOG_STORAGE_KEY);
-    console.log('All logs cleared');
   }
 
   /**
-   * Export logs as JSON
+   * Export logs as JSON (SANITIZED - safe for user to share)
    */
   exportLogsAsJSON() {
+    sanitizer.exportSanitizedJSON(this.logs);
+  }
+
+  /**
+   * Export logs as JSON (RAW - internal use only)
+   */
+  exportRawLogsAsJSON() {
     const dataStr = JSON.stringify(this.logs, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `app-logs-${new Date().toISOString().slice(0, 19)}.json`;
+    link.download = `app-logs-raw-${new Date().toISOString().slice(0, 19)}.json`;
     link.click();
     URL.revokeObjectURL(url);
   }
 
   /**
-   * Export logs as CSV
+   * Export logs as CSV (SANITIZED - safe for user to share)
    */
   exportLogsAsCSV() {
+    sanitizer.exportSanitizedCSV(this.logs);
+  }
+
+  /**
+   * Export logs as plain text (SANITIZED - safe for user to share)
+   */
+  exportLogsAsText() {
+    sanitizer.exportSanitizedText(this.logs);
+  }
+
+  /**
+   * Export logs as CSV (RAW - internal use only)
+   */
+  exportRawLogsAsCSV() {
     const headers = ['Timestamp', 'Level', 'Source', 'URL', 'Message'];
     const rows = this.logs.map(log => [
       log.timestamp,
@@ -218,7 +227,7 @@ class Logger {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `app-logs-${new Date().toISOString().slice(0, 19)}.csv`;
+    link.download = `app-logs-raw-${new Date().toISOString().slice(0, 19)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -253,12 +262,26 @@ class Logger {
       log.source.toLowerCase().includes(lowerKeyword)
     );
   }
+
+  /**
+   * Get sanitized logs for display (safe to show in UI)
+   */
+  getSanitizedLogs(limit = 50) {
+    return sanitizer.getSanitizedForDisplay(this.logs, limit);
+  }
+
+  /**
+   * Get redaction statistics
+   */
+  getRedactionStats() {
+    return sanitizer.getRedactionStats(this.logs);
+  }
 }
 
 // Create singleton instance
 const logger = new Logger();
 
-// Expose to window for debugging
-window.__logger = logger;
+// DO NOT expose to window - prevents access to logs
+// window.__logger = logger;
 
 export default logger;

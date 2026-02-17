@@ -44,7 +44,6 @@ const PricingSection = () => {
         }
       } catch (e) {
         setError('An unexpected error occurred.');
-        console.error(e);
       } finally {
         setLoading(false);
       }

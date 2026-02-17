@@ -54,7 +54,6 @@ const ApiKeysManagement = () => {
       setApiKeys(transformedData);
       setFilteredKeys(transformedData);
     } catch (error) {
-      console.error('Error fetching API keys:', error);
     } finally {
       setLoading(false);
     }

@@ -64,7 +64,6 @@ const AdminDashboard = () => {
       setRecentLogs(logs || []);
 
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
     } finally {
       setLoading(false);
     }

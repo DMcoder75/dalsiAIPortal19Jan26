@@ -48,7 +48,6 @@ const ApiLogs = () => {
       if (error) throw error;
       setUsers(data || []);
     } catch (error) {
-      console.error('Error fetching users:', error);
     }
   };
 
@@ -76,7 +75,6 @@ const ApiLogs = () => {
       setLogs(transformedData);
       setFilteredLogs(transformedData);
     } catch (error) {
-      console.error('Error fetching logs:', error);
     } finally {
       setLoading(false);
     }

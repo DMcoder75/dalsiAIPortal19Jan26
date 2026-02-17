@@ -11,4 +11,3 @@ createRoot(document.getElementById('root')).render(
     </AuthProvider>
   </StrictMode>,
 )
-console.log('🔧 BUILD_TIMESTAMP: 1765114379439715983');

@@ -47,7 +47,6 @@ const Subscriptions = () => {
       if (error) throw error;
       setUsers(data || []);
     } catch (error) {
-      console.error('Error fetching users:', error);
     }
   };
 
@@ -74,7 +73,6 @@ const Subscriptions = () => {
       setSubscriptions(transformedData);
       setFilteredSubscriptions(transformedData);
     } catch (error) {
-      console.error('Error fetching subscriptions:', error);
     } finally {
       setLoading(false);
     }

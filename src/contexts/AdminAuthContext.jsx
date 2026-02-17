@@ -47,7 +47,6 @@ export const AdminAuthProvider = ({ children }) => {
       });
 
       if (error || !data || data.length === 0 || !data[0].is_valid) {
-        console.error('Session verification failed:', error);
         localStorage.removeItem('admin_session');
         setAdminUser(null);
         setIsAdmin(false);
@@ -66,10 +65,7 @@ export const AdminAuthProvider = ({ children }) => {
       setIsAdmin(true);
       setLoading(false);
 
-      console.log('Admin session verified:', userData.username);
-
     } catch (error) {
-      console.error('Error checking admin session:', error);
       localStorage.removeItem('admin_session');
       setAdminUser(null);
       setIsAdmin(false);
@@ -79,7 +75,6 @@ export const AdminAuthProvider = ({ children }) => {
 
   const adminLogin = async (username, password) => {
     try {
-      console.log('Attempting admin login for:', username);
 
       // Call admin_login RPC function
       const { data, error } = await supabase.rpc('admin_login', {
@@ -88,7 +83,6 @@ export const AdminAuthProvider = ({ children }) => {
       });
 
       if (error) {
-        console.error('Login RPC error:', error);
         throw new Error(error.message);
       }
 
@@ -123,11 +117,9 @@ export const AdminAuthProvider = ({ children }) => {
       });
       setIsAdmin(true);
 
-      console.log('Admin login successful:', result.username);
       return { success: true, user: sessionData };
 
     } catch (error) {
-      console.error('Admin login failed:', error);
       return { success: false, error: error.message };
     }
   };
@@ -137,9 +129,7 @@ export const AdminAuthProvider = ({ children }) => {
       localStorage.removeItem('admin_session');
       setAdminUser(null);
       setIsAdmin(false);
-      console.log('Admin logout successful');
     } catch (error) {
-      console.error('Admin logout error:', error);
     }
   };
 

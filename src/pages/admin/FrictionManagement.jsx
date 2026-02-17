@@ -47,7 +47,6 @@ const FrictionManagement = () => {
       if (error) throw error;
       setUsers(data || []);
     } catch (error) {
-      console.error('Error fetching users:', error);
     }
   };
 
@@ -76,7 +75,6 @@ const FrictionManagement = () => {
       setFrictionEvents(transformedData);
       setFilteredEvents(transformedData);
     } catch (error) {
-      console.error('Error fetching friction events:', error);
     } finally {
       setLoading(false);
     }

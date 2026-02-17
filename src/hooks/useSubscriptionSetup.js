@@ -26,23 +26,3 @@ export const useSubscriptionSetup = (userId) => {
 
         if (!currentSub) {
           // Create initial free tier subscription
-          console.log('🆕 No subscription found, creating initial subscription...')
-          await subscriptionManager.createInitialSubscription(userId)
-        } else {
-          console.log('✅ Subscription already exists:', currentSub.subscription_plans.name)
-        }
-
-        setSubscriptionReady(true)
-      } catch (err) {
-        console.error('❌ Error setting up subscription:', err)
-        setError(err.message || 'Failed to setup subscription')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    setupSubscription()
-  }, [userId])
-
-  return { subscriptionReady, loading, error }
-}

@@ -406,22 +406,5 @@ export function getGenerationParams(query, isLoggedIn = false) {
  */
 export function logComplexityAnalysis(query, isLoggedIn = false) {
   const analysis = detectComplexity(query, isLoggedIn);
-  console.log('[COMPLEXITY_DETECTOR]', {
-    level: analysis.level,
-    score: analysis.score,
-    max_tokens: analysis.max_tokens,
-    is_guest: analysis.is_guest,
-    is_authenticated: analysis.is_authenticated,
-    factors: analysis.factors,
-    metrics: {
-      words: analysis.wordCount,
-      numbers: analysis.numberCount,
-      currencies: analysis.currencyCount,
-      financial_keywords: analysis.financialKeywordCount,
-      math_keywords: analysis.mathKeywordCount,
-      analysis_keywords: analysis.analysisKeywordCount,
-      list_items: analysis.listItemCount
-    }
-  });
   return analysis;
 }

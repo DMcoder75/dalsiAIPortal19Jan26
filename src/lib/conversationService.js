@@ -24,10 +24,8 @@ export async function getUserConversations(userId, token) {
     }
 
     const data = await response.json();
-    console.log('📋 Conversations fetched:', data);
     return data.conversations || [];
   } catch (error) {
-    console.error('❌ Error fetching conversations:', error);
     return [];
   }
 }
@@ -50,10 +48,8 @@ export async function getConversationMessages(chatId, token) {
     }
 
     const data = await response.json();
-    console.log('📨 Messages fetched:', data);
     return data.messages || [];
   } catch (error) {
-    console.error('❌ Error fetching messages:', error);
     return [];
   }
 }
@@ -80,10 +76,8 @@ export async function createConversation(userId, token, title = 'New Conversatio
     }
 
     const data = await response.json();
-    console.log('✅ Conversation created:', data);
     return data.conversation;
   } catch (error) {
-    console.error('❌ Error creating conversation:', error);
     return null;
   }
 }
@@ -109,10 +103,8 @@ export async function updateConversationTitle(chatId, token, title) {
     }
 
     const data = await response.json();
-    console.log('✅ Conversation updated:', data);
     return data.conversation;
   } catch (error) {
-    console.error('❌ Error updating conversation:', error);
     return null;
   }
 }
@@ -134,10 +126,8 @@ export async function deleteConversation(chatId, token) {
       throw new Error(`Failed to delete conversation: ${response.status}`);
     }
 
-    console.log('✅ Conversation deleted:', chatId);
     return true;
   } catch (error) {
-    console.error('❌ Error deleting conversation:', error);
     return false;
   }
 }
@@ -166,10 +156,8 @@ export async function saveMessage(chatId, userId, token, message, role = 'user')
     }
 
     const data = await response.json();
-    console.log('💬 Message saved:', data);
     return data.message;
   } catch (error) {
-    console.error('❌ Error saving message:', error);
     return null;
   }
 }
@@ -192,10 +180,8 @@ export async function getGuestConversations(guestUserId, apiKey) {
     }
 
     const data = await response.json();
-    console.log('👤 Guest conversations fetched:', data);
     return data.conversations || [];
   } catch (error) {
-    console.error('❌ Error fetching guest conversations:', error);
     return [];
   }
 }
@@ -224,10 +210,8 @@ export async function saveGuestMessage(guestUserId, apiKey, message, response) {
     }
 
     const data = await fetchResponse.json();
-    console.log('💬 Guest message saved:', data);
     return data.message;
   } catch (error) {
-    console.error('❌ Error saving guest message:', error);
     return null;
   }
 }

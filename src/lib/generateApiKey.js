@@ -78,12 +78,9 @@ export const createPortalUserApiKey = async (userId, subscriptionTier = 'free') 
       .single();
 
     if (error) {
-      console.error('❌ Error creating API key:', error);
       throw error;
     }
 
-    console.log('✅ API key created for portal user:', {
-      userId: userId.substring(0, 8) + '...',
       keyId: data.id.substring(0, 8) + '...',
       prefix: keyPrefix,
       is_internal: true
@@ -95,7 +92,6 @@ export const createPortalUserApiKey = async (userId, subscriptionTier = 'free') 
     };
 
   } catch (error) {
-    console.error('❌ Failed to create portal user API key:', error);
     throw error;
   }
 };
@@ -120,21 +116,17 @@ export const ensureUserHasApiKey = async (userId, subscriptionTier = 'free') => 
       .maybeSingle();
 
     if (fetchError) {
-      console.error('❌ Error checking for existing API key:', fetchError);
       throw fetchError;
     }
 
     if (existingKey) {
-      console.log('✅ User already has an API key:', existingKey.id.substring(0, 8) + '...');
       return existingKey;
     }
 
     // Create new API key
-    console.log('🔑 Creating new API key for user...');
     return await createPortalUserApiKey(userId, subscriptionTier);
 
   } catch (error) {
-    console.error('❌ Failed to ensure user has API key:', error);
     throw error;
   }
 };

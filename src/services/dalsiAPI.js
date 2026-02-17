@@ -58,62 +58,6 @@ class DalSiAPIService {
         model: modelId
       }
     } catch (error) {
-      console.error(`Health check failed for ${modelId}:`, error)
-      return {
-        model_loaded: false,
-        status: 'error',
-        model: modelId,
-        error: error.message
-      }
-    }
-  }
-
-  // Check if user has access to a specific model based on usage and subscription
-  async checkModelAccess(modelId, userUsageCount = 0, userSubscription = null) {
-    const model = this.models[modelId]
-    if (!model) return { hasAccess: false, reason: 'Model not found' }
-
-    // For all models: Allow free usage up to limit, then require subscription
-    if (userUsageCount < model.freeUsageLimit) {
-      return { 
-        hasAccess: true, 
-        remainingFreeUses: model.freeUsageLimit - userUsageCount,
-        isFreeUsage: true
-      }
-    }
-    
-    // After free limit, check subscription
-    if (!userSubscription || userSubscription.status !== 'active') {
-      return { 
-        hasAccess: false, 
-        reason: 'Free usage limit exceeded. Subscription required.',
-        upgradeRequired: true,
-        usedFreeUses: userUsageCount
-      }
-    }
-    
-    return { hasAccess: true, isFreeUsage: false }
-  }
-
-  // Generate text using the API
-  async generateText(modelId = 'dalsi-ai', prompt, options = {}) {
-    try {
-      const model = this.models[modelId]
-      if (!model) throw new Error(`Unknown model: ${modelId}`)
-
-      const payload = {
-        prompt,
-        model: modelId,
-        max_tokens: options.maxLength || this.defaultMaxLength,
-        use_history: options.useHistory !== false,
-        response_length: options.responseLength || 'medium'
-      }
-
-      const response = await fetch(`${this.apiEndpoint}/v1/text/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(options.apiKey && { 'X-API-Key': options.apiKey }),
           ...(options.authToken && { 'Authorization': `Bearer ${options.authToken}` })
         },
         body: JSON.stringify(payload)
@@ -131,34 +75,6 @@ class DalSiAPIService {
         sources: data.sources || []
       }
     } catch (error) {
-      console.error(`Text generation failed for ${modelId}:`, error)
-      return {
-        success: false,
-        error: error.message,
-        model: modelId
-      }
-    }
-  }
-
-  // Stream text generation using Server-Sent Events
-  async streamText(modelId = 'dalsi-ai', prompt, onToken, onComplete, onError, options = {}) {
-    try {
-      const model = this.models[modelId]
-      if (!model) throw new Error(`Unknown model: ${modelId}`)
-
-      const payload = {
-        prompt,
-        model: modelId,
-        max_tokens: options.maxLength || this.defaultMaxLength,
-        use_history: options.useHistory !== false,
-        response_length: options.responseLength || 'medium'
-      }
-
-      const response = await fetch(`${this.apiEndpoint}/v1/text/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(options.apiKey && { 'X-API-Key': options.apiKey }),
           ...(options.authToken && { 'Authorization': `Bearer ${options.authToken}` })
         },
         body: JSON.stringify(payload),
@@ -202,25 +118,3 @@ class DalSiAPIService {
 
       return { success: true, response: fullResponse }
     } catch (error) {
-      console.error(`Stream generation failed for ${modelId}:`, error)
-      if (onError) onError(error)
-      return { success: false, error: error.message }
-    }
-  }
-
-  // Get available models
-  getAvailableModels() {
-    return Object.entries(this.models).map(([id, model]) => ({
-      id,
-      ...model
-    }))
-  }
-
-  // Get model info
-  getModelInfo(modelId) {
-    return this.models[modelId] || null
-  }
-}
-
-// Export singleton instance
-export default new DalSiAPIService()

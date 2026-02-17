@@ -45,13 +45,6 @@ class LoggingDiagnostics {
       this.logs.shift();
     }
 
-    console.log('📊 [DIAGNOSTICS] Logging attempt recorded:', {
-      user_id: data.user_id,
-      endpoint: data.endpoint,
-      total_attempts: this.stats.total_attempts,
-      pending: this.stats.pending_logs
-    });
-
     return attempt;
   }
 
@@ -78,13 +71,6 @@ class LoggingDiagnostics {
     if (this.logs.length > this.maxLogs) {
       this.logs.shift();
     }
-
-    console.log('✅ [DIAGNOSTICS] Logging successful:', {
-      user_id: data.user_id,
-      endpoint: data.endpoint,
-      successful: this.stats.successful_logs,
-      success_rate: this.getSuccessRate()
-    });
 
     return success;
   }
@@ -123,14 +109,6 @@ class LoggingDiagnostics {
     if (this.logs.length > this.maxLogs) {
       this.logs.shift();
     }
-
-    console.error('❌ [DIAGNOSTICS] Logging failed:', {
-      user_id: data.user_id,
-      endpoint: data.endpoint,
-      error: data.error_message,
-      failed_count: this.stats.failed_logs,
-      success_rate: this.getSuccessRate()
-    });
 
     return failure;
   }
@@ -171,8 +149,6 @@ class LoggingDiagnostics {
     const diag = this.getDiagnostics();
     
     console.group('🔍 LOGGING DIAGNOSTICS REPORT');
-    console.log('Timestamp:', diag.timestamp);
-    console.log('Enabled:', diag.enabled);
     
     console.group('📊 Statistics');
     console.table(diag.statistics);
@@ -205,7 +181,6 @@ class LoggingDiagnostics {
     a.click();
     URL.revokeObjectURL(url);
     
-    console.log('📥 Diagnostics exported as JSON');
     return json;
   }
 
@@ -254,7 +229,6 @@ class LoggingDiagnostics {
       }
     }
 
-    console.log('🏥 [DIAGNOSTICS] Health Check:', health);
     return health;
   }
 
@@ -270,7 +244,6 @@ class LoggingDiagnostics {
       pending_logs: 0,
       errors: []
     };
-    console.log('🔄 [DIAGNOSTICS] Diagnostics reset');
   }
 
   /**
@@ -278,7 +251,6 @@ class LoggingDiagnostics {
    */
   setEnabled(enabled) {
     this.isEnabled = enabled;
-    console.log(`[DIAGNOSTICS] ${enabled ? 'Enabled' : 'Disabled'}`);
   }
 }
 
@@ -286,13 +258,11 @@ class LoggingDiagnostics {
 export const loggingDiagnostics = new LoggingDiagnostics();
 
 // Initialize immediately
-console.log('📊 [DIAGNOSTICS] Logging diagnostics service initialized');
 
 /**
  * Expose diagnostics to window for easy access in browser console
  */
 if (typeof window !== 'undefined') {
-  console.log('📊 [DIAGNOSTICS] Exposing diagnostics to window object');
   window.loggingDiagnostics = {
     // Get current diagnostics
     getDiagnostics: () => loggingDiagnostics.getDiagnostics(),
@@ -324,31 +294,6 @@ if (typeof window !== 'undefined') {
     
     // Help
     help: () => {
-      console.log(`
-🔍 LOGGING DIAGNOSTICS COMMANDS:
-================================
-
-window.loggingDiagnostics.getDiagnostics()  - Get all diagnostics data
-window.loggingDiagnostics.print()           - Print formatted report
-window.loggingDiagnostics.export()          - Export as JSON file
-window.loggingDiagnostics.health()          - Run health check
-window.loggingDiagnostics.reset()           - Reset all data
-window.loggingDiagnostics.enable()          - Enable diagnostics
-window.loggingDiagnostics.disable()         - Disable diagnostics
-window.loggingDiagnostics.getSuccessRate()  - Get success rate %
-window.loggingDiagnostics.getStats()        - Get statistics
-window.loggingDiagnostics.getLogs()         - Get all logs
-window.loggingDiagnostics.help()            - Show this help
-
-QUICK DIAGNOSTICS:
-==================
-1. Open browser DevTools (F12)
-2. Go to Console tab
-3. Run: window.loggingDiagnostics.print()
-4. Check success rate and recent errors
-5. If issues, run: window.loggingDiagnostics.export()
-6. Share exported JSON file for analysis
-      `);
     }
   };
 }

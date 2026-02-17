@@ -26,7 +26,6 @@ if (typeof window !== 'undefined') {
     getLogs: () => loggingDiagnostics.logs,
     help: () => { console.log('Logging diagnostics available'); }
   };
-  console.log('📊 [API_LOGGING] Diagnostics system initialized');
 }
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -59,10 +58,8 @@ export const getGuestIdentifier = () => {
     }
     
     const guestId = 'guest_' + Math.abs(hash).toString(16);
-    console.log('✅ Guest identifier generated:', guestId);
     return guestId;
   } catch (error) {
-    console.warn('⚠️ Could not generate guest identifier:', error);
     return 'guest_unknown';
   }
 };
@@ -74,7 +71,6 @@ export const getGuestIdentifier = () => {
  */
 export const getClientIp = async () => {
   try {
-    console.log('🌐 Attempting to fetch client IP from ipify...');
     
     // Try to get IP from ipify API with timeout
     const controller = new AbortController();
@@ -90,11 +86,9 @@ export const getClientIp = async () => {
     
     if (response.ok) {
       const data = await response.json();
-      console.log('✅ Client IP fetched from ipify:', data.ip);
       return data.ip;
     }
   } catch (error) {
-    console.warn('⚠️ Could not fetch IP from ipify, using guest identifier instead:', error.message);
   }
   
   // Fallback to guest identifier
@@ -132,10 +126,6 @@ export const logApiCall = async (logData) => {
 
     // Validate required fields (endpoint and method are mandatory)
     if (!logData.endpoint || !logData.method) {
-      console.warn('⚠️ Missing required fields for API logging:', {
-        endpoint: logData.endpoint,
-        method: logData.method
-      });
       loggingDiagnostics.recordFailure({
         user_id: logData.user_id,
         endpoint: logData.endpoint,
@@ -151,9 +141,7 @@ export const logApiCall = async (logData) => {
       const apiKey = await getUserApiKey(logData.user_id);
       if (apiKey) {
         apiKeyId = apiKey.id;
-        console.log('✅ API key fetched for user:', apiKey.name);
       } else {
-        console.warn('⚠️ No API key found for user:', logData.user_id.substring(0, 8) + '...');
       }
     }
 
@@ -182,22 +170,12 @@ export const logApiCall = async (logData) => {
       rate_limit_reset: logData.rate_limit_reset || null,
     };
 
-    console.log('📝 Logging API call:', {
-      endpoint: logData.endpoint,
-      user_id: logData.user_id,
-      status_code: logData.status_code,
-      tokens_used: logData.tokens_used,
-      cost_usd: logData.cost_usd,
-      ip_address: logData.ip_address
-    });
-
     // Insert into database
     const { data, error } = await supabase
       .from('api_usage_logs')
       .insert([record]);
 
     if (error) {
-      console.error('❌ Error logging API call:', error);
       loggingDiagnostics.recordFailure({
         user_id: logData.user_id,
         endpoint: logData.endpoint,
@@ -207,7 +185,6 @@ export const logApiCall = async (logData) => {
       return null;
     }
 
-    console.log('✅ API call logged successfully');
     
     // Update API key usage statistics
     if (apiKeyId) {
@@ -229,7 +206,6 @@ export const logApiCall = async (logData) => {
     return data?.[0] || null;
 
   } catch (error) {
-    console.error('❌ Unexpected error in API logging:', error);
     loggingDiagnostics.recordFailure({
       user_id: logData.user_id,
       endpoint: logData.endpoint,
@@ -319,13 +295,11 @@ export const logGuestApiCall = async (guestData) => {
   const guestUserId = await getGuestUserId();
   
   if (!guestUserId) {
-    console.error('❌ Cannot log guest API call: Guest user not found in database');
     return null;
   }
   
   // Ensure IP address is present for tracking
   if (!guestData.ip_address) {
-    console.warn('⚠️ IP address missing for guest API call, will use null');
   }
 
   return logChatApiCall({
@@ -404,7 +378,6 @@ export const getUserApiStats = async (user_id, options = {}) => {
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
-      console.error('❌ Error fetching API stats:', error);
       return null;
     }
 
@@ -430,7 +403,6 @@ export const getUserApiStats = async (user_id, options = {}) => {
     return stats;
 
   } catch (error) {
-    console.error('❌ Unexpected error fetching API stats:', error);
     return null;
   }
 };
@@ -492,7 +464,6 @@ export const getGuestApiStatsByIp = async (ip_address, options = {}) => {
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
-      console.error('❌ Error fetching guest API stats:', error);
       return null;
     }
 
@@ -521,7 +492,6 @@ export const getGuestApiStatsByIp = async (ip_address, options = {}) => {
     return stats;
 
   } catch (error) {
-    console.error('❌ Unexpected error fetching guest API stats:', error);
     return null;
   }
 };
